@@ -1,1 +1,154 @@
-Hello World
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Josh McKee - Investment Research Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: #fff;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .research-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .research-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+
+        .research-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .research-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .research-card p {
+            color: #718096;
+            margin-bottom: 1rem;
+        }
+
+        .research-card .date {
+            color: #a0aec0;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .research-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Investment Research Portfolio</h1>
+        <p class="subtitle">Exploring markets, trends, and opportunities</p>
+    </header>
+
+    <main class="container">
+        <div class="research-grid" id="researchGrid">
+            <!-- Research articles will be dynamically inserted here -->
+        </div>
+    </main>
+
+    <script>
+        // Sample research articles data
+        const researchArticles = [
+            {
+                title: "The Future of AI Investments",
+                description: "An analysis of artificial intelligence trends and their impact on the investment landscape.",
+                date: "March 2024",
+                url: "https://example.substack.com/ai-investments"
+            },
+            {
+                title: "ESG Investing: A Critical Review",
+                description: "Deep dive into the effectiveness and future of ESG investment strategies.",
+                date: "February 2024",
+                url: "https://example.substack.com/esg-investing"
+            },
+            {
+                title: "Emerging Markets Analysis",
+                description: "Opportunities and risks in developing economies for 2024 and beyond.",
+                date: "January 2024",
+                url: "https://example.substack.com/emerging-markets"
+            }
+        ];
+
+        // Function to create research cards
+        function createResearchCards() {
+            const grid = document.getElementById('researchGrid');
+            
+            researchArticles.forEach(article => {
+                const card = document.createElement('div');
+                card.className = 'research-card';
+                card.innerHTML = `
+                    <h2>${article.title}</h2>
+                    <p>${article.description}</p>
+                    <div class="date">${article.date}</div>
+                `;
+                
+                card.addEventListener('click', () => {
+                    window.open(article.url, '_blank');
+                });
+                
+                grid.appendChild(card);
+            });
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', createResearchCards);
+    </script>
+</body>
+</html>
