@@ -14,7 +14,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investment Resources - Josh McKee</title>
+    <title>Investing Resources</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -154,11 +154,15 @@
             border: 1px solid transparent;
             display: flex;
             gap: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
         }
 
         .resource-item:hover {
             border-color: var(--primary-color);
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .resource-image {
@@ -186,7 +190,6 @@
         .resource-content p {
             color: var(--text-secondary);
             font-size: 0.9rem;
-            margin-bottom: 0.5rem;
             line-height: 1.4;
         }
 
@@ -293,10 +296,10 @@
         <div class="header-content">
             <a href="index.html" class="back-button">
                 <i class="fas fa-arrow-left"></i>
-                Back to Portfolio
+                Back to Main Page
             </a>
-            <h1>Investment Resources</h1>
-            <p class="subtitle">A curated collection of valuable resources for investment research and learning.</p>
+            <h1>Investing Resources</h1>
+            <p class="subtitle">A collection of investing information I consume on a daily basis.</p>
             
             <ul class="nav-sections">
                 <li class="nav-item">
@@ -323,140 +326,125 @@
 
     <main class="container">
         <section id="substacks" class="resources-section">
-            <h2 class="section-title">Investment Substacks</h2>
+            <h2 class="section-title">Substacks</h2>
             <div class="resource-list">
-                <div class="resource-item">
-                    <img src="https://i.imgur.com/placeholder.jpg" alt="Morgan Housel" class="resource-image">
+                <a href="https://www.noahpinion.blog/" target="_blank" class="resource-item">
+                    <img src="noahpinion.png" alt="Noahpinion" class="resource-image">
                     <div class="resource-content">
-                        <h3>Morgan Housel</h3>
-                        <p>Author of "The Psychology of Money" writing about behavioral finance and investment psychology.</p>
-                        <a href="https://www.collaborativefund.com/blog/" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
+                        <h3>Noahpinion</h3>
+                        <p>Economics and other interesting stuff.</p>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://www.morganstanley.com/im/publication/insights/articles/article_michaelmauboussin.pdf" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Michael Mauboussin" class="resource-image">
                     <div class="resource-content">
                         <h3>Michael Mauboussin</h3>
                         <p>Deep research papers on investment philosophy, strategy, and decision making.</p>
-                        <a href="https://www.morganstanley.com/im/publication/insights/articles/article_michaelmauboussin.pdf" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Matt Levine" class="resource-image">
                     <div class="resource-content">
                         <h3>Matt Levine</h3>
                         <p>Bloomberg's Money Stuff newsletter covering markets, finance, and business with unique insight.</p>
-                        <a href="https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://www.oaktreecapital.com/insights/memos" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Howard Marks" class="resource-image">
                     <div class="resource-content">
                         <h3>Howard Marks</h3>
                         <p>Oaktree Capital co-founder's memos on market cycles, risk, and investment wisdom.</p>
-                        <a href="https://www.oaktreecapital.com/insights/memos" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
-                    <img src="https://i.imgur.com/placeholder.jpg" alt="Ben Thompson" class="resource-image">
+                </a>
+                <a href="https://stratechery.com/" target="_blank" class="resource-item">
+                    <img src="stratechery.png" alt="Stratechery" class="resource-image">
                     <div class="resource-content">
-                        <h3>Ben Thompson</h3>
-                        <p>Stratechery analysis of technology companies and their business models.</p>
-                        <a href="https://stratechery.com/" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
+                        <h3>Stratechery</h3>
+                        <p>Analysis of the strategy and business side of technology and media, and the impact of technology on society.</p>
                     </div>
-                </div>
+                </a>
             </div>
         </section>
 
         <section id="podcasts" class="resources-section">
-            <h2 class="section-title">Favorite Podcasts</h2>
+            <h2 class="section-title">Podcasts</h2>
             <div class="resource-list">
-                <div class="resource-item">
+                <a href="https://www.investtalk.com/" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Invest Talk" class="resource-image">
                     <div class="resource-content">
                         <h3>Invest Talk</h3>
                         <p>Daily show covering a wide range of investment topics with a focus on stock market investing and financial planning.</p>
-                        <a href="https://www.investtalk.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://capitalallocators.com/" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Capital Allocators" class="resource-image">
                     <div class="resource-content">
                         <h3>Capital Allocators</h3>
                         <p>Ted Seides interviews institutional investors and asset managers about their investment process and capital allocation decisions.</p>
-                        <a href="https://capitalallocators.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://www.valueafterhours.com/" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Value After Hours" class="resource-image">
                     <div class="resource-content">
                         <h3>Value After Hours</h3>
                         <p>Weekly discussion about value investing, business, and life with Tobias Carlisle, Bill Brewster, and Jake Taylor.</p>
-                        <a href="https://www.valueafterhours.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://www.joincolossus.com/" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Invest Like the Best" class="resource-image">
                     <div class="resource-content">
                         <h3>Invest Like the Best</h3>
                         <p>Patrick O'Shaughnessy hosts in-depth conversations with the world's best investors and business leaders.</p>
-                        <a href="https://www.joincolossus.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://www.bloomberg.com/opinion/authors/APqYQ3Wu3vw/barry-l-ritholtz" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Masters in Business" class="resource-image">
                     <div class="resource-content">
                         <h3>Masters in Business</h3>
                         <p>Bloomberg's Barry Ritholtz interviews influential figures in finance, business, and economics.</p>
-                        <a href="https://www.bloomberg.com/opinion/authors/APqYQ3Wu3vw/barry-l-ritholtz" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
+                </a>
             </div>
         </section>
 
         <section id="memos" class="resources-section">
-            <h2 class="section-title">Investment Memos</h2>
+            <h2 class="section-title">Memos</h2>
             <div class="resource-list">
-                <div class="resource-item">
+                <a href="https://www.berkshirehathaway.com/letters/letters.html" target="_blank" class="resource-item">
                     <img src="buffett.png" alt="Berkshire Hathaway Letters" class="resource-image">
                     <div class="resource-content">
                         <h3>Berkshire Hathaway Letters</h3>
                         <p>Warren Buffett's annual letters to shareholders, full of investment wisdom and business insights.</p>
-                        <a href="https://www.berkshirehathaway.com/letters/letters.html" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://thirdpointlimited.com/resources" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Third Point Investor Letters" class="resource-image">
                     <div class="resource-content">
                         <h3>Third Point Investor Letters</h3>
                         <p>Dan Loeb's quarterly investor letters discussing market views and investment theses.</p>
-                        <a href="https://thirdpointlimited.com/resources" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
-                    <img src="https://i.imgur.com/placeholder.jpg" alt="Pershing Square Letters" class="resource-image">
+                </a>
+                <a href="https://pershingsquareholdings.com/company-reports/letters-to-shareholders/" target="_blank" class="resource-item">
+                    <img src="bill_ackman.png" alt="Pershing Square Letters" class="resource-image">
                     <div class="resource-content">
                         <h3>Pershing Square Letters</h3>
                         <p>Bill Ackman's detailed investment analyses and market perspectives.</p>
-                        <a href="https://pershingsquareholdings.com/company-reports/letters-to-shareholders/" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
-                <div class="resource-item">
-                    <img src="https://i.imgur.com/placeholder.jpg" alt="Baupost Group Letters" class="resource-image">
+                </a>
+                <a href="https://www.morganstanley.com/im/en-us/financial-advisor/insights/series/consilient-observer.html" target="_blank" class="resource-item">
+                    <img src="michael_mauboussin.png" alt="Michael Mauboussin Paper" class="resource-image">
                     <div class="resource-content">
-                        <h3>Baupost Group Letters</h3>
-                        <p>Seth Klarman's investment philosophy and market observations.</p>
-                        <a href="#" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
+                        <h3>Michael Mauboussin Papers</h3>
+                        <p>Ideas and novel insights across disciplines for sharper decision-making.</p>
                     </div>
-                </div>
-                <div class="resource-item">
+                </a>
+                <a href="https://www8.gsb.columbia.edu/valueinvesting/resources/newsletters" target="_blank" class="resource-item">
                     <img src="https://i.imgur.com/placeholder.jpg" alt="Graham & Doddsville" class="resource-image">
                     <div class="resource-content">
                         <h3>Graham & Doddsville</h3>
                         <p>Columbia Business School's investment newsletter featuring interviews with value investors.</p>
-                        <a href="https://www8.gsb.columbia.edu/valueinvesting/resources/newsletters" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
                     </div>
-                </div>
+                </a>
             </div>
         </section>
     </main>
