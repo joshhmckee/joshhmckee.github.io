@@ -215,6 +215,14 @@
             background-color: #FF6719;
         }
 
+        .resources {
+            background-color: #10b981;
+        }
+
+        .goodreads {
+            background-color: #553b08;
+        }
+
         /* Notification Popup */
         .notification {
             position: fixed;
@@ -319,6 +327,14 @@
                         <i class="fas fa-newspaper"></i>
                         Substack
                     </a>
+                    <a href="resources.html" class="social-button resources">
+                        <i class="fas fa-book-reader"></i>
+                        Resources
+                    </a>
+                    <a href="https://www.goodreads.com/user/show/170018199-josh-mckee" target="_blank" class="social-button goodreads">
+                        <i class="fab fa-goodreads"></i>
+                        Goodreads
+                    </a>
                 </div>
             </div>
         </div>
@@ -330,12 +346,6 @@
             <!-- Research articles will be dynamically inserted here -->
         </div>
     </main>
-
-    <!-- Notification Popup -->
-    <div class="notification" id="notification">
-        <i class="fas fa-circle-notch"></i>
-        <span>Redirecting to Substack...</span>
-    </div>
 
     <script>
         // Your existing articles data
@@ -355,16 +365,6 @@
                 image: "verisign_image.png"
             }
         ];
-
-        function showNotification() {
-            const notification = document.getElementById('notification');
-            notification.classList.add('show');
-        }
-
-        function hideNotification() {
-            const notification = document.getElementById('notification');
-            notification.classList.remove('show');
-        }
 
         function createResearchCards() {
             const grid = document.getElementById('researchGrid');
@@ -387,11 +387,7 @@
                 `;
                 
                 card.addEventListener('click', () => {
-                    showNotification();
-                    setTimeout(() => {
-                        hideNotification();
-                        window.open(article.url, '_blank');
-                    }, 1500);
+                    window.open(article.url, '_blank');
                 });
                 
                 grid.appendChild(card);

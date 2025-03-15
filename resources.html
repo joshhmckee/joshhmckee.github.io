@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Resources - Josh McKee</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --primary-color: #2563eb;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            background: var(--bg-primary);
+            padding: 2rem;
+            box-shadow: 1px 0 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+            font-weight: 500;
+            border-bottom: 1px solid var(--bg-secondary);
+        }
+
+        .back-button:hover {
+            color: var(--primary-color);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 3rem;
+            line-height: 1.5;
+        }
+
+        .nav-sections {
+            list-style: none;
+            margin-top: auto;
+        }
+
+        .nav-item {
+            margin-bottom: 1rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: var(--bg-secondary);
+            color: var(--primary-color);
+        }
+
+        .nav-link i {
+            font-size: 1.2rem;
+        }
+
+        .container {
+            padding: 2rem 4rem 2rem 0;
+            max-width: 1200px;
+        }
+
+        .resources-section {
+            margin-bottom: 3rem;
+            animation: fadeIn 0.8s ease-out backwards;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .resource-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .resource-item {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .resource-item:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .resource-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+        }
+
+        .resource-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .resource-content h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+            color: var(--text-primary);
+        }
+
+        .resource-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .resource-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-top: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .resource-link i {
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                position: relative;
+                height: auto;
+                padding: 1.5rem;
+                margin-bottom: 1rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .nav-sections {
+                display: flex;
+                gap: 1rem;
+                overflow-x: auto;
+                padding-bottom: 1rem;
+                margin-top: 2rem;
+            }
+
+            .nav-item {
+                margin-bottom: 0;
+                flex-shrink: 0;
+            }
+
+            .resources-section {
+                margin-bottom: 2rem;
+            }
+
+            .resource-list {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 0.75rem;
+            }
+
+            .resource-item {
+                padding: 1rem;
+            }
+
+            .resource-image {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Add animations to elements */
+        .resources-section:nth-child(1) {
+            animation-delay: 0.4s;
+        }
+
+        .resources-section:nth-child(2) {
+            animation-delay: 0.6s;
+        }
+
+        .resources-section:nth-child(3) {
+            animation-delay: 0.8s;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                Back to Portfolio
+            </a>
+            <h1>Investment Resources</h1>
+            <p class="subtitle">A curated collection of valuable resources for investment research and learning.</p>
+            
+            <ul class="nav-sections">
+                <li class="nav-item">
+                    <a href="#substacks" class="nav-link active">
+                        <i class="fas fa-newspaper"></i>
+                        Substacks
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#podcasts" class="nav-link">
+                        <i class="fas fa-podcast"></i>
+                        Podcasts
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#memos" class="nav-link">
+                        <i class="fas fa-file-alt"></i>
+                        Memos
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="substacks" class="resources-section">
+            <h2 class="section-title">Investment Substacks</h2>
+            <div class="resource-list">
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Morgan Housel" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Morgan Housel</h3>
+                        <p>Author of "The Psychology of Money" writing about behavioral finance and investment psychology.</p>
+                        <a href="https://www.collaborativefund.com/blog/" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Michael Mauboussin" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Michael Mauboussin</h3>
+                        <p>Deep research papers on investment philosophy, strategy, and decision making.</p>
+                        <a href="https://www.morganstanley.com/im/publication/insights/articles/article_michaelmauboussin.pdf" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Matt Levine" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Matt Levine</h3>
+                        <p>Bloomberg's Money Stuff newsletter covering markets, finance, and business with unique insight.</p>
+                        <a href="https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Howard Marks" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Howard Marks</h3>
+                        <p>Oaktree Capital co-founder's memos on market cycles, risk, and investment wisdom.</p>
+                        <a href="https://www.oaktreecapital.com/insights/memos" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Ben Thompson" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Ben Thompson</h3>
+                        <p>Stratechery analysis of technology companies and their business models.</p>
+                        <a href="https://stratechery.com/" class="resource-link" target="_blank">Read More <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="podcasts" class="resources-section">
+            <h2 class="section-title">Favorite Podcasts</h2>
+            <div class="resource-list">
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Invest Talk" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Invest Talk</h3>
+                        <p>Daily show covering a wide range of investment topics with a focus on stock market investing and financial planning.</p>
+                        <a href="https://www.investtalk.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Capital Allocators" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Capital Allocators</h3>
+                        <p>Ted Seides interviews institutional investors and asset managers about their investment process and capital allocation decisions.</p>
+                        <a href="https://capitalallocators.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Value After Hours" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Value After Hours</h3>
+                        <p>Weekly discussion about value investing, business, and life with Tobias Carlisle, Bill Brewster, and Jake Taylor.</p>
+                        <a href="https://www.valueafterhours.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Invest Like the Best" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Invest Like the Best</h3>
+                        <p>Patrick O'Shaughnessy hosts in-depth conversations with the world's best investors and business leaders.</p>
+                        <a href="https://www.joincolossus.com/" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Masters in Business" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Masters in Business</h3>
+                        <p>Bloomberg's Barry Ritholtz interviews influential figures in finance, business, and economics.</p>
+                        <a href="https://www.bloomberg.com/opinion/authors/APqYQ3Wu3vw/barry-l-ritholtz" class="resource-link" target="_blank">Listen Now <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="memos" class="resources-section">
+            <h2 class="section-title">Investment Memos</h2>
+            <div class="resource-list">
+                <div class="resource-item">
+                    <img src="buffett.png" alt="Berkshire Hathaway Letters" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Berkshire Hathaway Letters</h3>
+                        <p>Warren Buffett's annual letters to shareholders, full of investment wisdom and business insights.</p>
+                        <a href="https://www.berkshirehathaway.com/letters/letters.html" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Third Point Investor Letters" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Third Point Investor Letters</h3>
+                        <p>Dan Loeb's quarterly investor letters discussing market views and investment theses.</p>
+                        <a href="https://thirdpointlimited.com/resources" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Pershing Square Letters" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Pershing Square Letters</h3>
+                        <p>Bill Ackman's detailed investment analyses and market perspectives.</p>
+                        <a href="https://pershingsquareholdings.com/company-reports/letters-to-shareholders/" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Baupost Group Letters" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Baupost Group Letters</h3>
+                        <p>Seth Klarman's investment philosophy and market observations.</p>
+                        <a href="#" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <img src="https://i.imgur.com/placeholder.jpg" alt="Graham & Doddsville" class="resource-image">
+                    <div class="resource-content">
+                        <h3>Graham & Doddsville</h3>
+                        <p>Columbia Business School's investment newsletter featuring interviews with value investors.</p>
+                        <a href="https://www8.gsb.columbia.edu/valueinvesting/resources/newsletters" class="resource-link" target="_blank">Visit Site <i class="fas fa-external-link-alt"></i></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Add smooth scrolling to nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                document.querySelector(targetId).scrollIntoView({ behavior: 'smooth' });
+                
+                // Update active state
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        // Update active state on scroll
+        const sections = document.querySelectorAll('.resources-section');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 300) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').slice(1) === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
