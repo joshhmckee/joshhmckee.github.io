@@ -94,6 +94,14 @@
             padding: 3rem 1.5rem;
         }
 
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2rem;
+            letter-spacing: -0.01em;
+        }
+
         .research-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -172,17 +180,6 @@
             color: var(--primary-color);
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
         /* Social Media Buttons */
         .social-links {
             display: flex;
@@ -246,6 +243,17 @@
             animation: spin 1s linear infinite;
         }
 
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         @keyframes spin {
             from {
                 transform: rotate(0deg);
@@ -281,6 +289,11 @@
             .social-links {
                 justify-content: center;
             }
+
+            .section-title {
+                text-align: center;
+                font-size: 1.35rem;
+            }
         }
     </style>
 </head>
@@ -292,7 +305,7 @@
             </div>
             <div class="header-text">
                 <h1>Josh McKee</h1>
-                <p class="subtitle">Researching High Quality Businesses & Making Long-Term Investments</p>
+                <p class="subtitle">Publishing Research on High Quality Businesses</p>
                 <div class="social-links">
                     <a href="https://www.linkedin.com/in/joshhmckee/" target="_blank" class="social-button linkedin">
                         <i class="fab fa-linkedin"></i>
@@ -312,6 +325,7 @@
     </header>
 
     <main class="container">
+        <h2 class="section-title">Latest Research & Analysis</h2>
         <div class="research-grid" id="researchGrid">
             <!-- Research articles will be dynamically inserted here -->
         </div>
@@ -352,14 +366,6 @@
             notification.classList.remove('show');
         }
 
-        function handleCardInteraction(article) {
-            showNotification();
-            setTimeout(() => {
-                hideNotification();
-                window.open(article.url, '_blank');
-            }, 1500);
-        }
-
         function createResearchCards() {
             const grid = document.getElementById('researchGrid');
             
@@ -380,16 +386,13 @@
                     </div>
                 `;
                 
-                // Add both click and touch events
-                card.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    handleCardInteraction(article);
+                card.addEventListener('click', () => {
+                    showNotification();
+                    setTimeout(() => {
+                        hideNotification();
+                        window.open(article.url, '_blank');
+                    }, 1500);
                 });
-                
-                card.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    handleCardInteraction(article);
-                }, { passive: false });
                 
                 grid.appendChild(card);
             });
