@@ -237,6 +237,30 @@
             background-color: #553b08;
         }
 
+        .mom-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            background-color: #ff69b4;
+            color: white;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin-left: 1rem;
+            vertical-align: middle;
+        }
+
+        .mom-button:hover {
+            transform: translateY(-2px);
+            background-color: #ff4d8c;
+        }
+
+        .mom-button i {
+            font-size: 0.9rem;
+        }
+
         /* Notification Popup */
         .notification {
             position: fixed;
@@ -359,7 +383,13 @@
                 <img src="profile.jpg" alt="Josh McKee" class="profile-image" onerror="this.src='https://via.placeholder.com/150x150?text=JM'">
             </div>
             <div class="header-text">
-                <h1>Josh McKee</h1>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <h1>Josh McKee</h1>
+                    <a href="birthday.html" class="mom-button">
+                        <i class="fas fa-heart"></i>
+                        Mom
+                    </a>
+                </div>
                 <p class="subtitle">Publishing Research on High Quality Businesses</p>
                 <div class="social-links">
                     <a href="https://www.linkedin.com/in/joshhmckee/" target="_blank" class="social-button linkedin">
@@ -374,13 +404,13 @@
                         <i class="fas fa-newspaper"></i>
                         Substack
                     </a>
-                    <a href="resources.html" class="social-button resources">
-                        <i class="fas fa-book-reader"></i>
-                        Resources
-                    </a>
                     <a href="https://www.goodreads.com/user/show/170018199-josh-mckee" target="_blank" class="social-button goodreads">
                         <i class="fab fa-goodreads"></i>
                         Goodreads
+                    </a>
+                    <a href="resources.html" class="social-button resources">
+                        <i class="fas fa-book-reader"></i>
+                        Resources
                     </a>
                 </div>
             </div>
