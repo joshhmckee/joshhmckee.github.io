@@ -4,97 +4,311 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Josh McKee - Investment Research Portfolio</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --primary-color: #2563eb;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         body {
-            background-color: #f5f5f5;
-            color: #333;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
             line-height: 1.6;
         }
 
         header {
-            background-color: #fff;
-            padding: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
+            background-color: var(--bg-primary);
+            padding: 2.5rem 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+        }
+
+        .profile-section {
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .profile-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary-color);
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .profile-image:hover {
+            transform: scale(1.05);
+        }
+
+        .header-text {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         h1 {
             font-size: 2.5rem;
-            margin-bottom: 1rem;
-            color: #2d3748;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+            background: linear-gradient(120deg, var(--primary-color), #1d4ed8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeInUp 0.8s ease;
         }
 
         .subtitle {
-            color: #718096;
+            color: var(--text-secondary);
             font-size: 1.2rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
+            animation: fadeInUp 0.8s ease 0.2s backwards;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 3rem 1.5rem;
         }
 
         .research-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            animation: fadeInUp 0.8s ease 0.4s backwards;
         }
 
         .research-card {
-            background: #fff;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .research-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), #1d4ed8);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
         }
 
         .research-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-6px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .research-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .article-image {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .card-content {
+            padding: 1.25rem;
         }
 
         .research-card h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #2d3748;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
         }
 
         .research-card p {
-            color: #718096;
-            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
         }
 
         .research-card .date {
-            color: #a0aec0;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .date i {
+            color: var(--primary-color);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Social Media Buttons */
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .social-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: white;
             font-size: 0.9rem;
+            text-decoration: none;
+            transition: transform 0.2s ease;
+        }
+
+        .social-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .linkedin {
+            background-color: #0077b5;
+        }
+
+        .twitter {
+            background-color: #1DA1F2;
+        }
+
+        .substack {
+            background-color: #FF6719;
+        }
+
+        /* Notification Popup */
+        .notification {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .notification i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 1.5rem;
+            }
+
             .container {
-                padding: 1rem;
+                padding: 1.5rem 1rem;
             }
             
             .research-grid {
                 grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1.1rem;
+            }
+
+            .social-links {
+                justify-content: center;
             }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Investment Research Portfolio</h1>
-        <p class="subtitle">Exploring markets, trends, and opportunities</p>
+        <div class="header-content">
+            <div class="profile-section">
+                <img src="profile.jpg" alt="Josh McKee" class="profile-image" onerror="this.src='https://via.placeholder.com/150x150?text=JM'">
+            </div>
+            <div class="header-text">
+                <h1>Josh McKee</h1>
+                <p class="subtitle">Researching High Quality Businesses & Making Long-Term Investments</p>
+                <div class="social-links">
+                    <a href="https://www.linkedin.com/in/joshhmckee/" target="_blank" class="social-button linkedin">
+                        <i class="fab fa-linkedin"></i>
+                        LinkedIn
+                    </a>
+                    <a href="https://x.com/stockmental" target="_blank" class="social-button twitter">
+                        <i class="fab fa-twitter"></i>
+                        Twitter
+                    </a>
+                    <a href="https://thedeepview.substack.com" target="_blank" class="social-button substack">
+                        <i class="fas fa-newspaper"></i>
+                        Substack
+                    </a>
+                </div>
+            </div>
+        </div>
     </header>
 
     <main class="container">
@@ -103,51 +317,73 @@
         </div>
     </main>
 
+    <!-- Notification Popup -->
+    <div class="notification" id="notification">
+        <i class="fas fa-circle-notch"></i>
+        <span>Redirecting to Substack...</span>
+    </div>
+
     <script>
-        // Sample research articles data
+        // Your existing articles data
         const researchArticles = [
             {
-                title: "The Future of AI Investments",
-                description: "An analysis of artificial intelligence trends and their impact on the investment landscape.",
-                date: "March 2024",
-                url: "https://example.substack.com/ai-investments"
+                title: "Ulta Beauty: High-Quality Compounder at a Discount",
+                description: "Continued growth on the horizon?",
+                date: "Dec 29, 2024",
+                url: "https://open.substack.com/pub/thedeepview/p/ulta-beauty-high-quality-compounder",
+                image: "/Users/joshmckee/Personal Website/joshhmckee.github.io/ulta_image.jpg"
             },
             {
-                title: "ESG Investing: A Critical Review",
-                description: "Deep dive into the effectiveness and future of ESG investment strategies.",
-                date: "February 2024",
-                url: "https://example.substack.com/esg-investing"
-            },
-            {
-                title: "Emerging Markets Analysis",
-                description: "Opportunities and risks in developing economies for 2024 and beyond.",
-                date: "January 2024",
-                url: "https://example.substack.com/emerging-markets"
+                title: "Verisign: Slowing Domain Name Growth",
+                description: "A cyclical or secular slowdown?",
+                date: "September 7, 2024",
+                url: "https://open.substack.com/pub/thedeepview/p/verisign-slowing-domain-name-growth",
+                image: "/Users/joshmckee/Personal Website/joshhmckee.github.io/verisign_image.png"
             }
         ];
 
-        // Function to create research cards
+        function showNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.add('show');
+        }
+
+        function hideNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.remove('show');
+        }
+
         function createResearchCards() {
             const grid = document.getElementById('researchGrid');
             
-            researchArticles.forEach(article => {
+            researchArticles.forEach((article, index) => {
                 const card = document.createElement('div');
                 card.className = 'research-card';
+                card.style.animation = `fadeInUp 0.8s ease ${0.2 * (index + 1)}s backwards`;
+                
                 card.innerHTML = `
-                    <h2>${article.title}</h2>
-                    <p>${article.description}</p>
-                    <div class="date">${article.date}</div>
+                    <img src="${article.image}" alt="${article.title}" class="article-image" onerror="this.src='https://via.placeholder.com/800x400?text=Research+Article'">
+                    <div class="card-content">
+                        <h2>${article.title}</h2>
+                        <p>${article.description}</p>
+                        <div class="date">
+                            <i class="far fa-calendar-alt"></i>
+                            ${article.date}
+                        </div>
+                    </div>
                 `;
                 
                 card.addEventListener('click', () => {
-                    window.open(article.url, '_blank');
+                    showNotification();
+                    setTimeout(() => {
+                        hideNotification();
+                        window.open(article.url, '_blank');
+                    }, 1500);
                 });
                 
                 grid.appendChild(card);
             });
         }
 
-        // Initialize the page
         document.addEventListener('DOMContentLoaded', createResearchCards);
     </script>
 </body>
