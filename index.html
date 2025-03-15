@@ -185,6 +185,8 @@
             display: flex;
             gap: 1rem;
             margin-top: 1rem;
+            flex-wrap: wrap;
+            justify-content: flex-start;
         }
 
         .social-button {
@@ -197,6 +199,7 @@
             font-size: 0.9rem;
             text-decoration: none;
             transition: transform 0.2s ease;
+            min-width: fit-content;
         }
 
         .social-button:hover {
@@ -276,6 +279,7 @@
                 flex-direction: column;
                 text-align: center;
                 gap: 1.5rem;
+                padding: 0.5rem;
             }
 
             .container {
@@ -292,15 +296,47 @@
 
             .subtitle {
                 font-size: 1.1rem;
+                padding: 0 0.5rem;
             }
 
             .social-links {
                 justify-content: center;
+                gap: 0.75rem;
+                padding: 0 0.5rem;
+            }
+
+            .social-button {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.85rem;
             }
 
             .section-title {
                 text-align: center;
                 font-size: 1.35rem;
+            }
+
+            .profile-image {
+                width: 120px;
+                height: 120px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .social-links {
+                gap: 0.5rem;
+            }
+
+            .social-button {
+                padding: 0.35rem 0.6rem;
+                font-size: 0.8rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
             }
         }
     </style>
