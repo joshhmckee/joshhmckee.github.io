@@ -1,448 +1,322 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-8PGS64HF0B"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-8PGS64HF0B');
+  </script>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8PGS64HF0B"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Josh McKee · Research on High-Quality Businesses</title>
+  <meta name="description" content="Josh McKee publishes in-depth research on high-quality businesses. Step into his retro research office to browse the reports, the reading list and the podcasts he follows.">
+  <link rel="canonical" href="https://www.joshmckee.com/">
+  <meta name="theme-color" content="#140d09">
+  <meta name="color-scheme" content="dark">
 
-        gtag('config', 'G-8PGS64HF0B');
-    </script>
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.joshmckee.com/">
+  <meta property="og:title" content="Josh McKee · Research Office">
+  <meta property="og:description" content="In-depth research on high-quality businesses, inside a retro 3D research office.">
+  <meta property="og:image" content="https://www.joshmckee.com/assets/img/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@stockmental">
+  <meta name="twitter:title" content="Josh McKee · Research Office">
+  <meta name="twitter:description" content="In-depth research on high-quality businesses, inside a retro 3D research office.">
+  <meta name="twitter:image" content="https://www.joshmckee.com/assets/img/og.jpg">
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Josh McKee</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-        :root {
-            --primary-color: #2563eb;
-            --text-primary: #1a1a1a;
-            --text-secondary: #666;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8fafc;
-        }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=VT323&display=swap">
+  <link rel="stylesheet" href="assets/css/office.css">
+  <link rel="modulepreload" href="assets/vendor/three.module.min.js">
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            line-height: 1.6;
-        }
-
-        header {
-            background-color: var(--bg-primary);
-            padding: 2.5rem 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header-content {
-            max-width: 1000px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            gap: 3rem;
-        }
-
-        .profile-section {
-            flex-shrink: 0;
-            position: relative;
-        }
-
-        .profile-image {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--primary-color);
-            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .profile-image:hover {
-            transform: scale(1.05);
-        }
-
-        .header-text {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: var(--text-primary);
-            background: linear-gradient(120deg, var(--primary-color), #1d4ed8);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: fadeInUp 0.8s ease;
-        }
-
-        .subtitle {
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-            animation: fadeInUp 0.8s ease 0.2s backwards;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 3rem 1.5rem;
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 2rem;
-            letter-spacing: -0.01em;
-        }
-
-        .research-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-            animation: fadeInUp 0.8s ease 0.4s backwards;
-        }
-
-        .research-card {
-            background: var(--bg-primary);
-            border-radius: 12px;
-            padding: 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .research-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary-color), #1d4ed8);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.3s ease;
-        }
-
-        .research-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        }
-
-        .research-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .article-image {
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-        }
-
-        .card-content {
-            padding: 1.25rem;
-        }
-
-        .research-card h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: var(--text-primary);
-        }
-
-        .research-card p {
-            color: var(--text-secondary);
-            margin-bottom: 0.75rem;
-            font-size: 1rem;
-        }
-
-        .research-card .date {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .date i {
-            color: var(--primary-color);
-        }
-
-        /* Social Media Buttons */
-        .social-links {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-        }
-
-        .social-button {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            color: white;
-            font-size: 0.9rem;
-            text-decoration: none;
-            transition: transform 0.2s ease;
-            min-width: fit-content;
-        }
-
-        .social-button:hover {
-            transform: translateY(-2px);
-        }
-
-        .linkedin {
-            background-color: #0077b5;
-        }
-
-        .twitter {
-            background-color: #1DA1F2;
-        }
-
-        .substack {
-            background-color: #FF6719;
-        }
-
-        .resources {
-            background-color: #10b981;
-        }
-
-        .goodreads {
-            background-color: #553b08;
-        }
-
-        /* Notification Popup */
-        .notification {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .notification.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-
-        .notification i {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                text-align: center;
-                gap: 1.5rem;
-                padding: 0.5rem;
-            }
-
-            .container {
-                padding: 1.5rem 1rem;
-            }
-            
-            .research-grid {
-                grid-template-columns: 1fr;
-            }
-
-            h1 {
-                font-size: 2rem;
-            }
-
-            .subtitle {
-                font-size: 1.1rem;
-                padding: 0 0.5rem;
-            }
-
-            .social-links {
-                justify-content: center;
-                gap: 0.75rem;
-                padding: 0 0.5rem;
-            }
-
-            .social-button {
-                padding: 0.4rem 0.75rem;
-                font-size: 0.85rem;
-            }
-
-            .section-title {
-                text-align: center;
-                font-size: 1.35rem;
-            }
-
-            .profile-image {
-                width: 120px;
-                height: 120px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .social-links {
-                gap: 0.5rem;
-            }
-
-            .social-button {
-                padding: 0.35rem 0.6rem;
-                font-size: 0.8rem;
-            }
-
-            .subtitle {
-                font-size: 1rem;
-            }
-
-            h1 {
-                font-size: 1.75rem;
-            }
-        }
-    </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Josh McKee",
+    "url": "https://www.joshmckee.com/",
+    "image": "https://www.joshmckee.com/assets/img/profile.jpg",
+    "description": "Publishes in-depth research on high-quality businesses.",
+    "sameAs": [
+      "https://www.linkedin.com/in/joshhmckee/",
+      "https://x.com/stockmental",
+      "https://www.goodreads.com/user/show/170018199-josh-mckee"
+    ]
+  }
+  </script>
+  <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="profile-section">
-                <img src="profile.jpg" alt="Josh McKee" class="profile-image" onerror="this.src='https://via.placeholder.com/150x150?text=JM'">
-            </div>
-            <div class="header-text">
-                <h1>Josh McKee</h1>
-                <p class="subtitle">Publishing Research on High Quality Businesses</p>
-                <div class="social-links">
-                    <a href="https://www.linkedin.com/in/joshhmckee/" target="_blank" class="social-button linkedin">
-                        <i class="fab fa-linkedin"></i>
-                        LinkedIn
-                    </a>
-                    <a href="https://x.com/stockmental" target="_blank" class="social-button twitter">
-                        <i class="fab fa-twitter"></i>
-                        Twitter
-                    </a>
-                    <a href="https://open.substack.com/pub/thedeepview" target="_blank" class="social-button substack">
-                        <i class="fas fa-newspaper"></i>
-                        Substack
-                    </a>
-                    <a href="https://www.goodreads.com/user/show/170018199-josh-mckee" target="_blank" class="social-button goodreads">
-                        <i class="fab fa-goodreads"></i>
-                        Goodreads
-                    </a>
-                    <a href="resources.html" class="social-button resources">
-                        <i class="fas fa-book-reader"></i>
-                        Resources
-                    </a>
-                </div>
-            </div>
-        </div>
+  <a class="skip-link" href="#text-version">Skip to the text version</a>
+
+  <!-- ============ The office (3D) ============ -->
+  <div class="stage" id="stage" aria-hidden="true">
+    <canvas id="scene"></canvas>
+    <div class="markers" id="markers"></div>
+  </div>
+
+  <header class="hud hud-top" aria-label="Site controls">
+    <div class="hud-id">
+      <span class="hud-name">JOSH McKEE</span>
+      <span class="hud-sub">RESEARCH OFFICE · EST. 2024</span>
+    </div>
+    <div class="hud-tools">
+      <button class="hud-btn" type="button" data-action="hints" aria-pressed="false" title="Show what you can click">?</button>
+      <button class="hud-btn" type="button" data-action="sound" aria-pressed="false">SOUND OFF</button>
+      <button class="hud-btn" type="button" data-action="crt" aria-pressed="true">CRT ON</button>
+      <a class="hud-btn" href="#text-version" data-action="text">TEXT VERSION</a>
+    </div>
+  </header>
+
+  <nav class="hud hud-dock" aria-label="Explore the office">
+    <button type="button" class="dock-btn" data-go="terminal">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2h12v9H2zM3 3v7h10V3zM5 12h6v1h2v1H3v-1h2z"/><path d="M4 5h1v1H4zM6 5h4v1H6zM4 7h1v1H4zM6 7h3v1H6z"/></svg>
+      <span>Research</span>
+    </button>
+    <button type="button" class="dock-btn" data-go="desk">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1h7l3 3v11H4zM5 2v12h8V5h-3V2zM11 2v2h2z"/><path d="M6 7h5v1H6zM6 9h6v1H6zM6 11h4v1H6zM2 3h1v13h10v-1H2z"/></svg>
+      <span>Reports</span>
+    </button>
+    <button type="button" class="dock-btn" data-go="library">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 14h14v1H1zM2 3h2v10H2zM5 2h2v11H5zM8 4h2v9H8zM11 3l2-1 2 10-2 1z"/></svg>
+      <span>Library</span>
+    </button>
+    <button type="button" class="dock-btn" data-go="podcasts">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 3h14v10H1zM2 4v8h12V4zM3 5h10v3H3zM5 9h6v2H5z"/><path d="M5 6h1v1H5zM10 6h1v1h-1z"/></svg>
+      <span>Podcasts</span>
+    </button>
+    <button type="button" class="dock-btn" data-go="contact">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v2h2v3h-3V6H4v2H1V5h2zM4 9h8l2 5H2zM7 10h2v1H7zM6 12h4v1H6z"/></svg>
+      <span>Contact</span>
+    </button>
+    <button type="button" class="dock-btn" data-go="about">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2h4v1h1v4h-1v1H6V7H5V3h1zM3 10h10v1h1v4H2v-4h1z"/></svg>
+      <span>About</span>
+    </button>
+  </nav>
+
+  <button type="button" class="back-btn" data-action="back" hidden>&larr; BACK <kbd>ESC</kbd></button>
+  <p class="hud-hint" id="hint">Drag to look around &middot; click anything in the room</p>
+  <div class="tooltip" id="tooltip" aria-hidden="true"></div>
+  <p class="sr-only" id="announcer" aria-live="polite"></p>
+
+  <div class="boot" id="boot" aria-hidden="true">
+    <pre class="boot-text" id="boot-text"></pre>
+    <div class="boot-bar"><span id="boot-bar"></span></div>
+  </div>
+
+  <!-- ============ Content: overlays in the office, a plain document in text mode ============ -->
+  <main class="content" id="text-version" tabindex="-1">
+    <header class="doc-head">
+      <p class="doc-kicker">www.joshmckee.com</p>
+      <h1>Josh McKee</h1>
+      <p class="doc-lede">Publishing research on high-quality businesses.</p>
+      <p class="doc-switch"><a href="./" data-action="office">Enter the 3D research office &rarr;</a></p>
     </header>
 
-    <main class="container">
-        <h2 class="section-title">Latest Research & Analysis</h2>
-        <div class="research-grid" id="researchGrid">
-            <!-- Research articles will be dynamically inserted here -->
+    <section class="panel panel-about" id="about" data-panel="about" aria-labelledby="about-title">
+      <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
+      <div class="about-card">
+        <div class="about-body">
+          <p class="panel-kicker">About</p>
+          <h2 id="about-title">Josh McKee</h2>
+          <p class="about-lede">Publishing research on high-quality businesses.</p>
+          <p>In-depth analyses of public companies: how they make money, what drives their value, and their long-term investment potential.</p>
+          <p class="about-links">
+            <a href="https://www.linkedin.com/in/joshhmckee/" rel="me noopener" target="_blank">LinkedIn</a>
+            <a href="https://x.com/stockmental" rel="me noopener" target="_blank">X</a>
+            <a href="https://www.goodreads.com/user/show/170018199-josh-mckee" rel="me noopener" target="_blank">Goodreads</a>
+          </p>
         </div>
-    </main>
+      </div>
+    </section>
 
-    <script>
-        // Your existing articles data
-        const researchArticles = [
-            {
-                title: "Ulta Beauty: High-Quality Compounder at a Discount",
-                description: "Continued growth on the horizon?",
-                date: "Dec 29, 2024",
-                url: "https://open.substack.com/pub/thedeepview/p/ulta-beauty-high-quality-compounder",
-                image: "ulta_image.jpg"
-            },
-            {
-                title: "Verisign: Slowing Domain Name Growth",
-                description: "A cyclical or secular slowdown?",
-                date: "September 7, 2024",
-                url: "https://open.substack.com/pub/thedeepview/p/verisign-slowing-domain-name-growth",
-                image: "verisign_image.png"
-            }
-        ];
+    <section class="panel panel-terminal" id="research" data-panel="terminal" aria-labelledby="research-title">
+      <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
+      <div class="term">
+        <p class="term-bar" aria-hidden="true"><span>THE DEEP VIEW &middot; RESEARCH TERMINAL</span><span class="term-clock"></span></p>
+        <h2 id="research-title" class="term-title">Research</h2>
+        <p class="term-cmd" aria-hidden="true">C:\RESEARCH&gt; DIR /COVERAGE</p>
+        <div class="reports">
+          <!-- To add a report, copy one <article> block. The office builds a paper pile and a terminal entry from it. -->
+          <article class="report" data-id="ulta" data-ticker="ULTA" data-exchange="NASDAQ" data-company="Ulta Beauty" data-image="assets/img/research/ulta.jpg">
+            <p class="report-meta"><span class="report-ticker">NASDAQ: ULTA</span> <time datetime="2024-12-29">December 29, 2024</time></p>
+            <h3 class="report-title"><a href="https://thedeepview.substack.com/p/ulta-beauty-high-quality-compounder" target="_blank" rel="noopener">Ulta Beauty: High-Quality Compounder at a Discount</a></h3>
+            <p class="report-dek">Continued growth on the horizon?</p>
+            <figure class="report-figure">
+              <img src="assets/img/research/ulta.jpg" alt="Bar chart of Ulta Beauty quarterly revenue in US dollars, rising from about $150 million in 2006 to roughly $2.5 to $3.5 billion by 2024." width="700" height="358" loading="lazy">
+            </figure>
+          </article>
+          <article class="report" data-id="vrsn" data-ticker="VRSN" data-exchange="NASDAQ" data-company="Verisign" data-image="assets/img/research/verisign.jpg">
+            <p class="report-meta"><span class="report-ticker">NASDAQ: VRSN</span> <time datetime="2024-09-07">September 7, 2024</time></p>
+            <h3 class="report-title"><a href="https://thedeepview.substack.com/p/verisign-slowing-domain-name-growth" target="_blank" rel="noopener">Verisign: Slowing Domain Name Growth</a></h3>
+            <p class="report-dek">A cyclical or secular slowdown?</p>
+            <figure class="report-figure">
+              <img src="assets/img/research/verisign.jpg" alt="Bar chart of the .com and .net domain name base, growing from about 156 million in Q2 2019 to a peak near 175 million in 2022 and 2023, then easing to about 170.6 million in Q2 2024." width="671" height="412" loading="lazy">
+            </figure>
+          </article>
+        </div>
+        <p class="term-foot">Full write-ups are published on <a href="https://thedeepview.substack.com" target="_blank" rel="noopener">The Deep View</a>, my Substack.</p>
+      </div>
+    </section>
 
-        function createResearchCards() {
-            const grid = document.getElementById('researchGrid');
-            
-            researchArticles.forEach((article, index) => {
-                const card = document.createElement('div');
-                card.className = 'research-card';
-                card.style.animation = `fadeInUp 0.8s ease ${0.2 * (index + 1)}s backwards`;
-                
-                card.innerHTML = `
-                    <img src="${article.image}" alt="${article.title}" class="article-image" onerror="this.src='https://via.placeholder.com/800x400?text=Research+Article'">
-                    <div class="card-content">
-                        <h2>${article.title}</h2>
-                        <p>${article.description}</p>
-                        <div class="date">
-                            <i class="far fa-calendar-alt"></i>
-                            ${article.date}
-                        </div>
-                    </div>
-                `;
-                
-                card.addEventListener('click', () => {
-                    window.open(article.url, '_blank');
-                });
-                
-                grid.appendChild(card);
-            });
-        }
+    <section class="panel panel-library library" id="library" data-panel="library" aria-labelledby="library-title">
+      <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
+      <p class="panel-kicker">Card catalog</p>
+      <h2 id="library-title">The library</h2>
+      <p class="panel-intro">The letters, memos and newsletters I read on a regular basis.</p>
+      <div class="shelf" data-category="Letters &amp; memos">
+        <h3>Letters &amp; memos</h3>
+        <ul class="items">
+          <li class="item" data-id="berkshire" data-spine="BERKSHIRE" data-mark="W.B.">
+            <h4 class="item-title"><a href="https://www.berkshirehathaway.com/letters/letters.html" target="_blank" rel="noopener">Berkshire Hathaway letters</a></h4>
+            <p class="item-by">Warren Buffett</p>
+            <p class="item-desc">Warren Buffett's annual letters to shareholders, full of investment wisdom and business insight.</p>
+          </li>
+          <li class="item" data-id="oaktree" data-spine="OAKTREE MEMOS" data-mark="H.M.">
+            <h4 class="item-title"><a href="https://www.oaktreecapital.com/insights/memos" target="_blank" rel="noopener">Oaktree memos</a></h4>
+            <p class="item-by">Howard Marks</p>
+            <p class="item-desc">The Oaktree Capital co-founder's memos on market cycles, risk and investment wisdom.</p>
+          </li>
+          <li class="item" data-id="pershing" data-spine="PERSHING SQ." data-mark="B.A.">
+            <h4 class="item-title"><a href="https://pershingsquareholdings.com/performance/reports-and-statements/" target="_blank" rel="noopener">Pershing Square letters</a></h4>
+            <p class="item-by">Bill Ackman</p>
+            <p class="item-desc">Bill Ackman's detailed investment analyses and market perspectives, in Pershing Square Holdings' reports.</p>
+          </li>
+          <li class="item" data-id="thirdpoint" data-spine="THIRD POINT" data-mark="D.L.">
+            <h4 class="item-title"><a href="https://www.thirdpoint.com/" target="_blank" rel="noopener">Third Point letters</a></h4>
+            <p class="item-by">Dan Loeb</p>
+            <p class="item-desc">Dan Loeb's quarterly investor letters discussing market views and investment theses.</p>
+          </li>
+          <li class="item" data-id="mauboussin" data-spine="MAUBOUSSIN" data-mark="M.M.">
+            <h4 class="item-title"><a href="https://www.morganstanley.com/im/en-us/financial-advisor/insights/series/consilient-observer.html" target="_blank" rel="noopener">Consilient Observer</a></h4>
+            <p class="item-by">Michael Mauboussin</p>
+            <p class="item-desc">Deep research papers on investment philosophy, strategy and decision-making, with ideas drawn from across disciplines.</p>
+          </li>
+          <li class="item" data-id="doddsville" data-spine="DODDSVILLE" data-mark="CBS">
+            <h4 class="item-title"><a href="https://business.columbia.edu/heilbrunn/resources/graham-and-doddsville-newsletter" target="_blank" rel="noopener">Graham &amp; Doddsville</a></h4>
+            <p class="item-by">Columbia Business School</p>
+            <p class="item-desc">Columbia Business School's investment newsletter, featuring interviews with value investors.</p>
+          </li>
+        </ul>
+      </div>
+      <div class="shelf" data-category="Newsletters">
+        <h3>Newsletters</h3>
+        <ul class="items">
+          <li class="item" data-id="moneystuff" data-spine="MONEY STUFF" data-mark="M.L.">
+            <h4 class="item-title"><a href="https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine" target="_blank" rel="noopener">Money Stuff</a></h4>
+            <p class="item-by">Matt Levine, Bloomberg</p>
+            <p class="item-desc">Bloomberg's Money Stuff newsletter, covering markets, finance and business with unique insight.</p>
+          </li>
+          <li class="item" data-id="stratechery" data-spine="STRATECHERY" data-mark="B.T.">
+            <h4 class="item-title"><a href="https://stratechery.com/" target="_blank" rel="noopener">Stratechery</a></h4>
+            <p class="item-by">Ben Thompson</p>
+            <p class="item-desc">Analysis of the strategy and business side of technology and media, and the impact of technology on society.</p>
+          </li>
+          <li class="item" data-id="noahpinion" data-spine="NOAHPINION" data-mark="N.S.">
+            <h4 class="item-title"><a href="https://www.noahpinion.blog/" target="_blank" rel="noopener">Noahpinion</a></h4>
+            <p class="item-by">Noah Smith</p>
+            <p class="item-desc">Economics and other interesting stuff.</p>
+          </li>
+        </ul>
+      </div>
+      <div class="shelf" data-category="Reading list">
+        <h3>Reading list</h3>
+        <ul class="items">
+          <li class="item" data-id="goodreads" data-spine="READING LIST" data-mark="J.M.">
+            <h4 class="item-title"><a href="https://www.goodreads.com/user/show/170018199-josh-mckee" target="_blank" rel="noopener">My bookshelf on Goodreads</a></h4>
+            <p class="item-by">Josh McKee</p>
+            <p class="item-desc">The books I'm reading, have read and want to read next.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
 
-        document.addEventListener('DOMContentLoaded', createResearchCards);
-    </script>
+    <section class="panel panel-tapes podcasts" id="podcasts" data-panel="podcasts" aria-labelledby="podcasts-title">
+      <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
+      <p class="panel-kicker">Tape deck</p>
+      <h2 id="podcasts-title">Podcasts</h2>
+      <p class="panel-intro">The shows I keep in rotation.</p>
+      <div class="shelf" data-category="Podcasts">
+        <ul class="items">
+          <li class="item" data-id="investtalk" data-short="INVEST TALK">
+            <h4 class="item-title"><a href="https://www.investtalk.com/" target="_blank" rel="noopener">Invest Talk</a></h4>
+            <p class="item-by">Daily show</p>
+            <p class="item-desc">A daily show covering a wide range of investment topics, with a focus on stock market investing and financial planning.</p>
+          </li>
+          <li class="item" data-id="capitalallocators" data-short="CAPITAL ALLOCATORS">
+            <h4 class="item-title"><a href="https://www.capitalallocators.com/" target="_blank" rel="noopener">Capital Allocators</a></h4>
+            <p class="item-by">Ted Seides</p>
+            <p class="item-desc">Ted Seides interviews institutional investors and asset managers about their investment process and capital allocation decisions.</p>
+          </li>
+          <li class="item" data-id="valueafterhours" data-short="VALUE AFTER HOURS">
+            <h4 class="item-title"><a href="https://acquirersmultiple.com/podcast/" target="_blank" rel="noopener">Value After Hours</a></h4>
+            <p class="item-by">Tobias Carlisle, Bill Brewster &amp; Jake Taylor</p>
+            <p class="item-desc">A weekly discussion about value investing, business and life.</p>
+          </li>
+          <li class="item" data-id="investlikethebest" data-short="INVEST LIKE THE BEST">
+            <h4 class="item-title"><a href="https://colossus.com/series/invest-like-the-best/" target="_blank" rel="noopener">Invest Like the Best</a></h4>
+            <p class="item-by">Patrick O'Shaughnessy</p>
+            <p class="item-desc">In-depth conversations with the world's best investors and business leaders.</p>
+          </li>
+          <li class="item" data-id="mastersinbusiness" data-short="MASTERS IN BUSINESS">
+            <h4 class="item-title"><a href="https://www.bloomberg.com/opinion/authors/APqYQ3Wu3vw/barry-l-ritholtz" target="_blank" rel="noopener">Masters in Business</a></h4>
+            <p class="item-by">Barry Ritholtz, Bloomberg</p>
+            <p class="item-desc">Barry Ritholtz interviews influential figures in finance, business and economics.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel panel-contact" id="contact" data-panel="contact" aria-labelledby="contact-title">
+      <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
+      <div class="card">
+        <p class="panel-kicker">Rolodex</p>
+        <h2 id="contact-title">McKEE, JOSH</h2>
+        <p class="card-role">Research &middot; high-quality businesses</p>
+        <ul class="card-lines">
+          <li><span>LINKEDIN</span> <a href="https://www.linkedin.com/in/joshhmckee/" target="_blank" rel="me noopener">in/joshhmckee</a></li>
+          <li><span>X</span> <a href="https://x.com/stockmental" target="_blank" rel="me noopener">@stockmental</a></li>
+          <li><span>SUBSTACK</span> <a href="https://thedeepview.substack.com" target="_blank" rel="me noopener">The Deep View</a></li>
+          <li><span>GOODREADS</span> <a href="https://www.goodreads.com/user/show/170018199-josh-mckee" target="_blank" rel="me noopener">Josh McKee</a></li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="doc-foot">
+      <p>Nothing on this site is investment advice.</p>
+      <p>&copy; Josh McKee</p>
+    </footer>
+  </main>
+
+  <!-- the paper report overlay (filled from the research entries) -->
+  <div class="paper-wrap" id="paper" role="dialog" aria-modal="false" aria-labelledby="paper-title" hidden>
+    <article class="paper">
+      <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
+      <p class="paper-letterhead"><span>THE DEEP VIEW</span><span>EQUITY RESEARCH</span></p>
+      <p class="paper-meta"></p>
+      <h2 class="paper-title" id="paper-title"></h2>
+      <p class="paper-dek"></p>
+      <figure class="paper-figure"><img alt="" src="data:," width="700" height="358"></figure>
+      <p class="paper-actions"><a class="paper-cta" href="#" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+      <p class="paper-stamp" aria-hidden="true">NOT INVESTMENT ADVICE</p>
+    </article>
+  </div>
+
+  <!-- If the 3D office can't load, the page quietly becomes the plain document. -->
+  <script type="module" src="assets/js/main.js" onerror="document.documentElement.classList.remove('js')"></script>
+  <script nomodule>document.documentElement.classList.remove('js');</script>
 </body>
 </html>
