@@ -59,57 +59,21 @@
   <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
-  <a class="skip-link" href="#text-version">Skip to the text version</a>
-
   <!-- ============ The office (3D) ============ -->
   <div class="stage" id="stage" aria-hidden="true">
     <canvas id="scene"></canvas>
     <div class="markers" id="markers"></div>
   </div>
 
-  <header class="hud hud-top" aria-label="Site controls">
-    <div class="hud-id">
-      <span class="hud-name">JOSH McKEE</span>
-      <span class="hud-sub">RESEARCH OFFICE · EST. 2024</span>
-    </div>
-    <div class="hud-tools">
-      <button class="hud-btn" type="button" data-action="hints" aria-pressed="false" title="Show what you can click">?</button>
-      <button class="hud-btn" type="button" data-action="sound" aria-pressed="false">SOUND OFF</button>
-      <button class="hud-btn" type="button" data-action="crt" aria-pressed="true">CRT ON</button>
-      <a class="hud-btn" href="#text-version" data-action="text">TEXT VERSION</a>
-    </div>
-  </header>
-
-  <nav class="hud hud-dock" aria-label="Explore the office">
-    <button type="button" class="dock-btn" data-go="terminal">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2h12v9H2zM3 3v7h10V3zM5 12h6v1h2v1H3v-1h2z"/><path d="M4 5h1v1H4zM6 5h4v1H6zM4 7h1v1H4zM6 7h3v1H6z"/></svg>
-      <span>Research</span>
-    </button>
-    <button type="button" class="dock-btn" data-go="desk">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1h7l3 3v11H4zM5 2v12h8V5h-3V2zM11 2v2h2z"/><path d="M6 7h5v1H6zM6 9h6v1H6zM6 11h4v1H6zM2 3h1v13h10v-1H2z"/></svg>
-      <span>Reports</span>
-    </button>
-    <button type="button" class="dock-btn" data-go="library">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 14h14v1H1zM2 3h2v10H2zM5 2h2v11H5zM8 4h2v9H8zM11 3l2-1 2 10-2 1z"/></svg>
-      <span>Library</span>
-    </button>
-    <button type="button" class="dock-btn" data-go="podcasts">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 3h14v10H1zM2 4v8h12V4zM3 5h10v3H3zM5 9h6v2H5z"/><path d="M5 6h1v1H5zM10 6h1v1h-1z"/></svg>
-      <span>Podcasts</span>
-    </button>
-    <button type="button" class="dock-btn" data-go="contact">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v2h2v3h-3V6H4v2H1V5h2zM4 9h8l2 5H2zM7 10h2v1H7zM6 12h4v1H6z"/></svg>
-      <span>Contact</span>
-    </button>
-    <button type="button" class="dock-btn" data-go="about">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2h4v1h1v4h-1v1H6V7H5V3h1zM3 10h10v1h1v4H2v-4h1z"/></svg>
-      <span>About</span>
-    </button>
+  <!-- Keyboard menu: invisible until someone tabs into it. -->
+  <nav class="kbd-nav" aria-label="Explore the office">
+    <button type="button" data-go="terminal">Research</button>
+    <button type="button" data-go="desk">Reports</button>
+    <button type="button" data-go="library">Library</button>
+    <button type="button" data-go="podcasts">Podcasts</button>
+    <button type="button" data-go="contact">Contact</button>
+    <button type="button" data-go="about">About</button>
   </nav>
-
-  <button type="button" class="back-btn" data-action="back" hidden>&larr; BACK <kbd>ESC</kbd></button>
-  <p class="hud-hint" id="hint">Drag to look around &middot; click anything in the room</p>
-  <div class="tooltip" id="tooltip" aria-hidden="true"></div>
   <p class="sr-only" id="announcer" aria-live="polite"></p>
 
   <div class="boot" id="boot" aria-hidden="true">
@@ -117,15 +81,15 @@
     <div class="boot-bar"><span id="boot-bar"></span></div>
   </div>
 
-  <!-- ============ Content: overlays in the office, a plain document in text mode ============ -->
-  <main class="content" id="text-version" tabindex="-1">
-    <header class="doc-head">
-      <p class="doc-kicker">www.joshmckee.com</p>
-      <h1>Josh McKee</h1>
-      <p class="doc-lede">Publishing research on high-quality businesses.</p>
-      <p class="doc-switch"><a href="./" data-action="office">Enter the 3D research office &rarr;</a></p>
-    </header>
+  <!-- Shown only if the 3D office can't run in this browser. -->
+  <div class="fallback" id="fallback">
+    <p class="fallback-name">Josh McKee</p>
+    <p>This office is built in 3D and needs a browser with WebGL 2, such as a recent Chrome, Safari, Firefox or Edge.</p>
+    <p><a href="https://www.linkedin.com/in/joshhmckee/" rel="me noopener">LinkedIn</a> &middot; <a href="https://x.com/stockmental" rel="me noopener">X</a></p>
+  </div>
 
+  <!-- ============ Content: the cards that open when you click something in the office ============ -->
+  <main class="content" id="content">
     <section class="panel panel-about" id="about" data-panel="about" aria-labelledby="about-title">
       <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
       <div class="about-card">
@@ -168,7 +132,7 @@
             </figure>
           </article>
         </div>
-        <p class="term-foot">Full write-ups are published on <a href="https://thedeepview.substack.com" target="_blank" rel="noopener">The Deep View</a>, my Substack.</p>
+        <p class="term-foot">Full write-ups are published on <a href="https://thedeepview.substack.com" target="_blank" rel="noopener">The Deep View</a>, my Substack. Nothing here is investment advice.</p>
       </div>
     </section>
 
@@ -295,10 +259,6 @@
       </div>
     </section>
 
-    <footer class="doc-foot">
-      <p>Nothing on this site is investment advice.</p>
-      <p>&copy; Josh McKee</p>
-    </footer>
   </main>
 
   <!-- the paper report overlay (filled from the research entries) -->

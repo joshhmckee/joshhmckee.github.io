@@ -17,21 +17,12 @@ const HASH_FOR = (target) => {
   return id ? `#${k}/${id}` : `#${k}`;
 };
 
-const store = {
-  get(k) {
-    try { return localStorage.getItem(`office:${k}`); } catch (e) { return null; }
-  },
-  set(k, v) {
-    try { localStorage.setItem(`office:${k}`, v); } catch (e) { /* private mode */ }
-  },
-};
-
 export class UI {
-  constructor(office, content, { reduced }) {
+  constructor(office, content, { reduced, touch }) {
     this.o = office;
     this.content = content;
     this.reduced = reduced;
-    this.textMode = false;
+    this.touch = touch;
     this.panelOpen = null;
     this.markersOn = false;
     this.markerTimer = null;
@@ -39,9 +30,6 @@ export class UI {
     this.$ = (s) => document.querySelector(s);
     this.el = {
       body: document.body,
-      tooltip: this.$('#tooltip'),
-      hint: this.$('#hint'),
-      back: this.$('.back-btn'),
       boot: this.$('#boot'),
       bootText: this.$('#boot-text'),
       bootBar: this.$('#boot-bar'),
@@ -59,45 +47,28 @@ export class UI {
     };
     this.bind();
     this.prepTerminal();
-    this.tipLast = '';
   }
 
   /* ---------------- wiring ---------------- */
 
   bind() {
+    // keyboard-only menu (hidden until it receives focus)
     document.querySelectorAll('[data-go]').forEach((b) =>
       b.addEventListener('click', () => {
         const go = b.dataset.go;
-        if (this.o.state.target === go) this.o.navigate('main');
-        else this.o.navigate(go);
+        this.o.navigate(this.o.state.target === go ? 'main' : go);
       }));
     document.querySelectorAll('[data-action="back"]').forEach((b) => b.addEventListener('click', () => this.o.back()));
-    const crtBtn = this.$('[data-action="crt"]');
-    const soundBtn = this.$('[data-action="sound"]');
-    const hintBtn = this.$('[data-action="hints"]');
-    crtBtn.addEventListener('click', () => this.setCRT(crtBtn.getAttribute('aria-pressed') !== 'true'));
-    soundBtn.addEventListener('click', () => this.setSound(soundBtn.getAttribute('aria-pressed') !== 'true'));
-    hintBtn.addEventListener('click', () => this.toggleMarkers());
-    this.$('[data-action="text"]').addEventListener('click', (e) => {
-      e.preventDefault();
-      this.enterTextMode();
-    });
-    this.$('[data-action="office"]').addEventListener('click', (e) => {
-      if (this.o.pipeline) {
-        e.preventDefault();
-        this.exitTextMode();
-      }
-    });
     window.addEventListener('popstate', () => this.fromLocation());
     window.addEventListener('hashchange', () => this.fromLocation());
 
     // library + podcast cards talk to their 3D counterparts
-    const hookList = (panel, prefix, kind) => {
+    const hookList = (panel, prefix) => {
       panel.querySelectorAll('.item[data-id]').forEach((li) => {
         const id = li.dataset.id;
         li.tabIndex = -1;
-        const enter = () => this.o.previewItem && this.o.previewItem(kind, id, true);
-        const leave = () => this.o.previewItem && this.o.previewItem(kind, id, false);
+        const enter = () => this.o.previewItem && this.o.previewItem(prefix, id, true);
+        const leave = () => this.o.previewItem && this.o.previewItem(prefix, id, false);
         li.addEventListener('mouseenter', enter);
         li.addEventListener('mouseleave', leave);
         li.addEventListener('focusin', enter);
@@ -108,8 +79,8 @@ export class UI {
         });
       });
     };
-    hookList(this.el.panels.library, 'book', 'book');
-    hookList(this.el.panels.podcasts, 'tape', 'tape');
+    hookList(this.el.panels.library, 'book');
+    hookList(this.el.panels.podcasts, 'tape');
   }
 
   prepTerminal() {
@@ -149,7 +120,6 @@ export class UI {
       if (fig) fig.after(cta);
       else art.appendChild(cta);
       link.addEventListener('click', (e) => {
-        if (this.textMode) return;
         e.preventDefault();
         this.expandReport(art.classList.contains('is-expanded') ? null : art);
       });
@@ -165,8 +135,7 @@ export class UI {
       const i = links.indexOf(document.activeElement);
       if (i < 0) return;
       e.preventDefault();
-      const next = links[(i + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length];
-      next.focus();
+      links[(i + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length].focus();
     });
   }
 
@@ -176,36 +145,7 @@ export class UI {
     if (art) {
       art.querySelector('.report-open a').focus({ preventScroll: true });
       art.scrollIntoView({ block: 'nearest' });
-      this.o.sound.keys();
     }
-  }
-
-  /* ---------------- preferences ---------------- */
-
-  prefersText() {
-    return location.hash === '#text-version' || new URLSearchParams(location.search).has('text');
-  }
-
-  applyPrefs() {
-    if (store.get('crt') === '0') this.setCRT(false);
-    if (store.get('sound') === '1') this.setSound(true, { silent: true });
-  }
-
-  setCRT(on) {
-    const btn = this.$('[data-action="crt"]');
-    btn.setAttribute('aria-pressed', String(on));
-    btn.textContent = on ? 'CRT ON' : 'CRT OFF';
-    this.o.pipeline && this.o.pipeline.setCRT(on);
-    store.set('crt', on ? '1' : '0');
-  }
-
-  setSound(on, { silent = false } = {}) {
-    const btn = this.$('[data-action="sound"]');
-    btn.setAttribute('aria-pressed', String(on));
-    btn.textContent = on ? 'SOUND ON' : 'SOUND OFF';
-    this.o.sound.setEnabled(on);
-    if (on && !silent) this.o.sound.click();
-    store.set('sound', on ? '1' : '0');
   }
 
   /* ---------------- boot ---------------- */
@@ -219,7 +159,7 @@ export class UI {
       `Detecting research reports ......... ${n(content.reports.length, 2)} FOUND`,
       `Shelving the library ............... ${n(content.library.length, 2)} VOLUMES`,
       `Rewinding cassettes ................ ${n(content.podcasts.length, 2)} TAPES`,
-      'Brewing coffee ..................... OK',
+      'Walking the dog .................... OK',
       'Dusting the blinds ................. OK',
       '',
       'C:\\> OFFICE.EXE',
@@ -259,18 +199,28 @@ export class UI {
     }
     clearTimeout(this.boot.timer);
     this.boot = null;
-    this.applyPrefs();
     this.el.boot.classList.add('is-off');
     this.el.body.classList.remove('is-booting');
     await new Promise((r) => setTimeout(r, this.reduced ? 50 : 650));
     this.el.boot.hidden = true;
   }
 
+  /** Shown only when the 3D office can't run at all. */
+  showFallback() {
+    if (this.boot) {
+      clearTimeout(this.boot.timer);
+      this.boot = null;
+    }
+    this.el.boot.hidden = true;
+    this.el.body.classList.remove('is-booting');
+    this.el.body.classList.add('no-office');
+  }
+
   /* ---------------- hash routing ---------------- */
 
   targetFromHash() {
     const h = decodeURIComponent(location.hash.replace(/^#/, ''));
-    if (!h || h === 'text-version') return null;
+    if (!h) return null;
     if (h === 'research') return 'terminal';
     const [k, id] = h.split('/');
     if (['report', 'book', 'tape'].includes(k) && id) return `${k}:${id}`;
@@ -288,11 +238,6 @@ export class UI {
   }
 
   fromLocation() {
-    if (location.hash === '#text-version') {
-      if (!this.textMode) this.enterTextMode({ fromHash: true });
-      return;
-    }
-    if (this.textMode) return;
     const t = this.targetFromHash() || 'main';
     if (t !== this.o.state.target) this.o.navigate(t, { fromHash: true });
   }
@@ -309,8 +254,7 @@ export class UI {
     el.hidden = false;
     el.classList.add('is-open');
     this.panelOpen = name;
-    this.el.back.hidden = false;
-    this.el.body.classList.add('has-panel', `panel-${name}`);
+    this.el.body.classList.add('has-panel', `open-${name}`);
     if (name === 'terminal') {
       this.expandReport(null);
       this.layoutTerminal();
@@ -335,8 +279,7 @@ export class UI {
       const f = this.panelFraction(name);
       this.o.rig.shiftFor(f.x, f.y);
     });
-    const title = el.querySelector('h2')?.textContent || name;
-    this.announce(`Opened ${title}`);
+    this.announce(`Opened ${el.querySelector('h2')?.textContent || name}`);
   }
 
   /** How much of the screen a panel covers: from the right on wide screens, from the bottom on narrow ones. */
@@ -355,19 +298,19 @@ export class UI {
 
   closePanels({ keepFor = null } = {}) {
     const keep = PANEL_FOR(keepFor);
-    for (const [k, p] of Object.entries(this.el.panels)) if (k !== keep) this.hide(p);
-    for (const k of Object.keys(this.el.panels)) if (k !== keep) this.el.body.classList.remove(`panel-${k}`);
-    if (!keep) {
-      this.panelOpen = null;
-      this.el.body.classList.remove('has-panel');
-      this.el.back.hidden = keepFor === 'main' || !keepFor;
-      this.o.rig.shiftFor(0, 0);
-      if (this.returnFocus && document.contains(this.returnFocus) && this.returnFocus !== document.body) {
-        this.returnFocus.focus({ preventScroll: true });
-      }
-      this.returnFocus = null;
+    for (const [k, p] of Object.entries(this.el.panels)) {
+      if (k === keep) continue;
+      this.hide(p);
+      this.el.body.classList.remove(`open-${k}`);
     }
-    if (keepFor && keepFor !== 'main') this.el.back.hidden = false;
+    if (keep) return;
+    this.panelOpen = null;
+    this.el.body.classList.remove('has-panel');
+    this.o.rig.shiftFor(0, 0);
+    if (this.returnFocus && document.contains(this.returnFocus) && this.returnFocus !== document.body) {
+      this.returnFocus.focus({ preventScroll: true });
+    }
+    this.returnFocus = null;
   }
 
   openPaper(rep) {
@@ -435,48 +378,17 @@ export class UI {
     }
   }
 
-  tooltip(h, x, y) {
-    const t = this.el.tooltip;
-    if (!h || this.panelOpen) {
-      if (t.classList.contains('is-on')) t.classList.remove('is-on');
-      return;
-    }
-    const label = typeof h.label === 'function' ? h.label() : h.label;
-    const key = `${label}|${h.sub}`;
-    if (key !== this.tipLast) {
-      t.innerHTML = `<strong></strong><span></span>`;
-      t.firstChild.textContent = label;
-      t.lastChild.textContent = h.sub || '';
-      this.tipLast = key;
-    }
-    const pad = 18;
-    const w = t.offsetWidth || 180;
-    const left = x + pad + w > window.innerWidth ? x - pad - w : x + pad;
-    t.style.transform = `translate(${Math.round(left)}px, ${Math.round(y + pad)}px)`;
-    t.classList.add('is-on');
-  }
-
   hoverItem(h) {
     const id = h && (h.book ? h.book.item.id : h.tape ? h.tape.item.id : null);
     document.querySelectorAll('.item.is-hot').forEach((li) => li.classList.remove('is-hot'));
     if (id) document.querySelectorAll(`.item[data-id="${CSS.escape(id)}"]`).forEach((li) => li.classList.add('is-hot'));
   }
 
-  /* ---------------- markers ---------------- */
+  /* ---------------- markers: small pulsing diamonds, no labels ---------------- */
 
   visibleHotspots() {
     const v = this.o.state.view;
     return this.o.hotspots.filter((h) => h.anchor && (!h.views || h.views.includes(v)) && (!this.markerFilter || this.markerFilter(h)));
-  }
-
-  toggleMarkers(force) {
-    const on = force !== undefined ? force : !this.markersOn;
-    this.markersOn = on;
-    this.markerFilter = null;
-    clearTimeout(this.markerTimer);
-    this.$('[data-action="hints"]').setAttribute('aria-pressed', String(on));
-    if (on) this.buildMarkers();
-    this.el.markers.classList.toggle('is-on', on);
   }
 
   flashMarkers(ms, filter = null) {
@@ -489,7 +401,6 @@ export class UI {
     this.markerTimer = setTimeout(() => {
       this.markersOn = false;
       this.el.markers.classList.remove('is-on');
-      this.$('[data-action="hints"]').setAttribute('aria-pressed', 'false');
     }, ms);
   }
 
@@ -499,9 +410,6 @@ export class UI {
     this.markerEls = this.visibleHotspots().map((h) => {
       const m = document.createElement('div');
       m.className = `marker${h.minor ? ' is-minor' : ''}`;
-      const label = typeof h.label === 'function' ? h.label() : h.label;
-      m.innerHTML = '<i></i><span></span>';
-      m.lastChild.textContent = h.minor ? label : `${label}`;
       box.appendChild(m);
       return { h, m };
     });
@@ -524,56 +432,12 @@ export class UI {
 
   /* ---------------- misc ---------------- */
 
-  setActiveDock(view) {
-    document.querySelectorAll('.dock-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.go === view));
+  setActiveNav(view) {
+    document.querySelectorAll('[data-go]').forEach((b) => b.setAttribute('aria-current', String(b.dataset.go === view)));
   }
 
   announce(text) {
     this.el.announcer.textContent = '';
     setTimeout(() => (this.el.announcer.textContent = text), 30);
-  }
-
-  interacted() {
-    if (!this.el.body.classList.contains('has-interacted')) this.el.body.classList.add('has-interacted');
-  }
-
-  /* ---------------- text mode ---------------- */
-
-  enterTextMode({ initial = false, reason = null, fromHash = false } = {}) {
-    this.textMode = true;
-    this.el.body.classList.add('text-mode');
-    this.el.body.classList.remove('is-booting', 'has-panel');
-    if (this.boot) {
-      clearTimeout(this.boot.timer);
-      this.boot = null;
-    }
-    this.el.boot.hidden = true;
-    for (const p of Object.values(this.el.panels)) {
-      p.classList.remove('is-open', 'is-on', 'is-full');
-      p.style.cssText = '';
-      p.hidden = p === this.el.paper;
-    }
-    this.o.pause && this.o.pause();
-    if (reason === 'webgl' || reason === 'error') {
-      const note = document.createElement('p');
-      note.className = 'doc-note';
-      note.textContent = reason === 'webgl'
-        ? 'Your browser can’t show the 3D office, so here is the text version.'
-        : 'The 3D office hit a snag, so here is the text version.';
-      this.$('.doc-head').appendChild(note);
-      this.$('.doc-switch').hidden = true;
-    }
-    if (!fromHash && !initial) history.replaceState(null, '', location.pathname + location.search + '#text-version');
-    window.scrollTo(0, 0);
-    if (!initial) this.$('#text-version').focus({ preventScroll: true });
-  }
-
-  exitTextMode() {
-    this.textMode = false;
-    this.el.body.classList.remove('text-mode');
-    history.replaceState(null, '', location.pathname + location.search);
-    this.o.resume();
-    this.o.state.target = null;
-    this.o.navigate('main');
   }
 }

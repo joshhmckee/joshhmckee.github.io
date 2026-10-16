@@ -74,13 +74,15 @@ export function buildEffects(ctx, shared) {
         vLit = shaftAt(p) * (0.6 + 0.4 * sin(uTime * (1.0 + seed * 3.0) + seed * 20.0));
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
-        gl_PointSize = uPx * (seed > 0.85 ? 2.0 : 1.0);
+        gl_PointSize = uPx * (seed > 0.85 ? 2.2 : 1.4);
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor;
       varying float vLit;
       void main() {
-        gl_FragColor = vec4(uColor * (0.04 + vLit * 2.4), 1.0);
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        float a = smoothstep(1.0, 0.2, r);
+        gl_FragColor = vec4(uColor * (0.03 + vLit * 2.2) * a, 1.0);
       }`,
     transparent: true,
     depthWrite: false,
@@ -116,11 +118,14 @@ export function buildEffects(ctx, shared) {
         vA = sin(life * 3.14159) * (1.0 - life) * 0.55;
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
-        gl_PointSize = uPx * (1.0 + life * 2.5);
+        gl_PointSize = uPx * (3.0 + life * 7.0);
       }`,
     fragmentShader: /* glsl */ `
       varying float vA;
-      void main() { gl_FragColor = vec4(vec3(0.95, 0.9, 0.82) * vA, 1.0); }`,
+      void main() {
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        gl_FragColor = vec4(vec3(0.95, 0.9, 0.82) * vA * smoothstep(1.0, 0.0, r), 1.0);
+      }`,
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,

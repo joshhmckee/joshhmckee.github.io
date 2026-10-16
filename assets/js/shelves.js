@@ -1,6 +1,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { std, box, boxB, cyl, put, dynamic, rng, TAU } from './util.js';
 import * as T from './textures.js';
+import { pothos } from './plants.js';
 
 const CASE_H = 2.88;
 const CASE_D = 0.4;
@@ -326,12 +327,8 @@ function placeDecor(g, r, x, y, clearance, decor) {
     return 0.1;
   }
   if (kind === 'plant') {
-    cyl(g, 0.045, 0.035, 0.08, 10, decor.pot, [x + 0.06, y + 0.04, z]);
-    for (let i = 0; i < 7; i++) {
-      const a = (i / 7) * TAU;
-      put(g, new THREE.SphereGeometry(0.03, 6, 4), decor.leaf, [x + 0.06 + Math.cos(a) * 0.035, y + 0.11 + r.range(0, 0.05), z + Math.sin(a) * 0.035], { s: [1, 0.35, 0.6], r: [0, a, r.range(-0.5, 0.5)] });
-    }
-    return 0.12;
+    pothos(g, [x + 0.06, y, z + 0.04], 8 + Math.floor(r() * 50));
+    return 0.13;
   }
   boxB(g, 0.16, 0.07, 0.11, r.pick(decor.ceramic), [x + 0.08, y, z]);
   return 0.16;

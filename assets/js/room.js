@@ -266,7 +266,7 @@ export function buildRoom(ctx) {
   sun.shadow.normalBias = 0.015;
   scene.add(sun);
 
-  const hemi = new THREE.HemisphereLight('#7a7aa8', '#3a1f14', 0.7);
+  const hemi = new THREE.HemisphereLight('#7a7aa8', '#3a1f14', 0.45);
   scene.add(hemi);
   const windowGlow = new THREE.PointLight('#ff8f6a', 3.0, 6.5, 1.3);
   windowGlow.position.set(0, 1.85, z0 + 0.6);

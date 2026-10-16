@@ -71,13 +71,45 @@ export function put(parent, geometry, material, pos = [0, 0, 0], opts = {}) {
   return m;
 }
 
+/**
+ * A box with softly rounded edges: real furniture catches a thin highlight along every edge.
+ * Built from a 3x3x3 box whose inner grid lines are pulled out to the bevel, then the edge
+ * and corner vertices are swung onto the rounding.
+ */
+export function roundedBox(w, h, d, radius) {
+  const g = new THREE.BoxGeometry(1, 1, 1, 3, 3, 3);
+  const half = [w / 2, h / 2, d / 2];
+  const rr = Math.min(radius, half[0] * 0.5, half[1] * 0.5, half[2] * 0.5);
+  const p = g.attributes.position, n = g.attributes.normal;
+  const v = [0, 0, 0], q = [0, 0, 0], dir = [0, 0, 0];
+  for (let i = 0; i < p.count; i++) {
+    v[0] = p.getX(i); v[1] = p.getY(i); v[2] = p.getZ(i);
+    for (let a = 0; a < 3; a++) {
+      // grid at -0.5, -1/6, 1/6, 0.5 -> -h, -h+r, h-r, h
+      const t = v[a];
+      v[a] = Math.abs(t) > 0.4 ? Math.sign(t) * half[a] : Math.sign(t) * (half[a] - rr);
+      q[a] = clamp(v[a], -(half[a] - rr), half[a] - rr);
+      dir[a] = v[a] - q[a];
+    }
+    const len = Math.hypot(dir[0], dir[1], dir[2]);
+    const axes = (Math.abs(dir[0]) > 1e-6) + (Math.abs(dir[1]) > 1e-6) + (Math.abs(dir[2]) > 1e-6);
+    if (axes >= 2) {
+      for (let a = 0; a < 3; a++) v[a] = q[a] + (dir[a] / len) * rr;
+      n.setXYZ(i, dir[0] / len, dir[1] / len, dir[2] / len);
+    }
+    p.setXYZ(i, v[0], v[1], v[2]);
+  }
+  return g;
+}
+
 const boxCache = new Map();
-/** Shared unit-ish box geometry cache keyed by dimensions. */
+/** Shared box geometry cache keyed by dimensions (rounded edges unless the box is tiny). */
 export function boxGeo(w, h, d) {
   const k = `${w.toFixed(4)}|${h.toFixed(4)}|${d.toFixed(4)}`;
   let g = boxCache.get(k);
   if (!g) {
-    g = new THREE.BoxGeometry(w, h, d);
+    const r = Math.min(0.006, 0.3 * Math.min(w, h, d));
+    g = r > 0.0015 ? roundedBox(w, h, d, r) : new THREE.BoxGeometry(w, h, d);
     boxCache.set(k, g);
   }
   return g;
@@ -94,7 +126,7 @@ export function boxB(parent, w, h, d, material, [x, y, z], opts) {
 }
 
 export function cyl(parent, rTop, rBot, h, seg, material, pos, opts = {}) {
-  const g = new THREE.CylinderGeometry(rTop, rBot, h, seg, 1, !!opts.open, opts.thetaStart || 0, opts.thetaLength || TAU);
+  const g = new THREE.CylinderGeometry(rTop, rBot, h, Math.max(seg * 2, 12), 1, !!opts.open, opts.thetaStart || 0, opts.thetaLength || TAU);
   return put(parent, g, material, pos, opts);
 }
 

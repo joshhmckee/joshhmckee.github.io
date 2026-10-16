@@ -3,9 +3,12 @@
 A retro 3D research office you can click around in. It's a plain static site
 for GitHub Pages: no build step, no dependencies to install.
 
+Move the cursor and the view follows it; click objects to open them, and click
+empty space (or press Esc) to step back. On phones, drag to look around.
+
 Everything the office shows (reports, books, tapes, links) comes from the
-HTML in `index.html`. That same HTML is the accessible text version, so search
-engines, screen readers and browsers without WebGL still get the content.
+HTML in `index.html`, so search engines and screen readers get the content too.
+Keyboard users can press Tab to reveal a small menu.
 
 ## Preview locally
 
@@ -19,7 +22,7 @@ ES modules over `file://`.
 
 ## Editing content
 
-All content lives in `index.html`, inside `<main id="text-version">`.
+All content lives in `index.html`, inside `<main id="content">`.
 
 ### Add a research report
 
@@ -69,16 +72,16 @@ cassette label (two words read best). The credenza holds up to six tapes.
 | --- | --- |
 | `assets/js/main.js` | Boot, navigation, clicking, animation loop |
 | `assets/js/room.js` · `shelves.js` · `desk.js` · `decor.js` | The office, built from code (no 3D model files) |
-| `assets/js/textures.js` | Every texture is pixel art drawn at load time |
-| `assets/js/post.js` | Low-res render, sunbeams, bloom, dithering, CRT effect |
-| `assets/js/ui.js` | Panels, terminal, boot screen, hint markers, text mode |
-| `assets/js/audio.js` | Synthesised sound effects (off by default) |
-| `assets/css/office.css` | All styling, including the text version |
+| `assets/js/textures.js` | Every texture is drawn in code at load time |
+| `assets/js/post.js` | Rendering: sunbeams, ambient occlusion, bloom, tone mapping, anti-aliasing |
+| `assets/js/dog.js` | The long-haired dachshund: body, hair, trot, wandering and naps |
+| `assets/js/plants.js` | Rubber plant, snake plant and pothos |
+| `assets/js/ui.js` | Content cards, terminal, boot screen, hint markers |
+| `assets/css/office.css` | All styling |
 | `assets/vendor/three.module.min.js` | three.js r170 (MIT licence) |
 
 Useful URL switches while working on it: `?shot` (skip the intro),
 `?view=library` (jump to a camera view), `?open=report:ulta` (open a panel),
-`?raw` (no retro effects), `?nodither`, `?noshaft`, `?lowh=240` (render height),
-`?text` (text version).
+`?raw` (no post-processing), `?noshaft`, `?lowh=600` (render height).
 
 Nothing on this site is investment advice.

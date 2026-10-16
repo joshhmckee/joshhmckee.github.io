@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { retro, retroUniforms } from './util.js';
+import { retroUniforms } from './util.js';
 import { SHAFT_GLSL } from './effects.js';
 
 const VERT = /* glsl */ `
@@ -35,30 +35,62 @@ void main() {
   gl_FragColor = vec4(c, 1.0);
 }`;
 
-/** Low-res composite: volumetric sun shafts, bloom, tone mapping, grading, hover outline, dithering. */
+/** Screen-space ambient occlusion: grounds objects and darkens corners and crevices. */
+const SSAO = /* glsl */ `
+uniform sampler2D tDepth;
+uniform mat4 uProjInv;
+uniform mat4 uProj;
+uniform vec2 uAspect;
+uniform float uRadius;
+uniform float uIntensity;
+varying vec2 vUv;
+vec3 viewPos(vec2 uv) {
+  float d = texture2D(tDepth, uv).r;
+  vec4 p = uProjInv * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+  return p.xyz / p.w;
+}
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+void main() {
+  float d = texture2D(tDepth, vUv).r;
+  if (d >= 0.9999) { gl_FragColor = vec4(1.0); return; }
+  vec3 P = viewPos(vUv);
+  vec3 N = normalize(cross(dFdx(P), dFdy(P)));
+  float rs = min(uRadius * uProj[1][1] / -P.z * 0.5, 0.12);
+  float ang = hash(gl_FragCoord.xy) * 6.2831853;
+  float sum = 0.0;
+  for (int i = 0; i < 14; i++) {
+    float t = (float(i) + 0.5) / 14.0;
+    float a = ang + t * 6.2831853 * 2.618;
+    vec2 off = vec2(cos(a), sin(a)) * sqrt(t) * rs * uAspect;
+    vec3 v = viewPos(vUv + off) - P;
+    float vl = length(v);
+    sum += max(0.0, dot(N, v / max(vl, 1e-4)) - 0.12) * smoothstep(uRadius, uRadius * 0.25, vl);
+  }
+  float ao = clamp(1.0 - uIntensity * sum / 14.0, 0.0, 1.0);
+  gl_FragColor = vec4(ao, ao, ao, 1.0);
+}`;
+
+/** Composite: AO, sun shafts, bloom, tone mapping, grading, hover outline, fine dither against banding. */
 const COMPOSITE = /* glsl */ `
 uniform sampler2D tScene;
-uniform sampler2D tDepth;
 uniform sampler2D tBloom;
 uniform sampler2D tMask;
 uniform sampler2D tShaft;
+uniform sampler2D tAO;
 uniform vec2 uRes;
 uniform vec3 uSunColor;
 uniform float uShaft;
-uniform float uTime;
+uniform float uAO;
 uniform float uExposure;
 uniform float uBloom;
 uniform float uHover;
+uniform float uOutlineW;
 uniform vec3 uOutline;
-uniform float uLevels;
-uniform float uDither;
 uniform float uSat;
-uniform float uFade;
 varying vec2 vUv;
 
 float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
 float bayer4(vec2 a) { return bayer2(0.5 * a) * 0.25 + bayer2(a); }
-float bayer8(vec2 a) { return bayer4(0.5 * a) * 0.25 + bayer2(a); }
 
 vec3 aces(vec3 x) {
   const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
@@ -67,37 +99,31 @@ vec3 aces(vec3 x) {
 
 void main() {
   vec3 col = texture2D(tScene, vUv).rgb;
-
+  col *= mix(1.0, texture2D(tAO, vUv).r, uAO);
   col += uSunColor * texture2D(tShaft, vUv).r * uShaft;
-
   col += texture2D(tBloom, vUv).rgb * uBloom;
 
-  // --- tone map & grade
   col = aces(col * uExposure);
   col = pow(col, vec3(1.0 / 2.2));
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
   col = mix(vec3(lum), col, uSat);
-  col += (1.0 - lum) * (1.0 - lum) * vec3(0.012, 0.0, 0.035); // violet shadows
-  col = (col - 0.5) * 1.05 + 0.5;
+  col += (1.0 - lum) * (1.0 - lum) * vec3(0.008, 0.0, 0.02); // a touch of violet in the shadows
 
-  // --- hover outline (one low-res pixel, pulsing)
   if (uHover > 0.0) {
-    vec2 px = 1.0 / uRes;
+    vec2 px = uOutlineW / uRes;
     float m = texture2D(tMask, vUv).r;
     float n = max(max(texture2D(tMask, vUv + vec2(px.x, 0.0)).r, texture2D(tMask, vUv - vec2(px.x, 0.0)).r),
                   max(texture2D(tMask, vUv + vec2(0.0, px.y)).r, texture2D(tMask, vUv - vec2(0.0, px.y)).r));
-    float edge = clamp(n - m, 0.0, 1.0);
-    col = mix(col, uOutline, edge * uHover);
-    col += m * uHover * 0.07;
+    col = mix(col, uOutline, clamp(n - m, 0.0, 1.0) * uHover);
+    col += m * uHover * 0.05;
   }
 
-  // --- ordered dither into a limited palette
-  float th = bayer4(gl_FragCoord.xy) - 0.5;
-  col = floor(col * uLevels + 0.5 + th * uDither) / uLevels;
-  gl_FragColor = vec4(clamp(col * uFade, 0.0, 1.0), 1.0);
+  // invisible 8-bit dither so gradients don't band
+  col += (bayer4(gl_FragCoord.xy) - 0.5) / 255.0;
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
 
-/** Volumetric light through the blinds, ray-marched at half the low resolution. */
+/** Volumetric light through the blinds, ray-marched at half resolution. */
 const SHAFTS = /* glsl */ `
 uniform sampler2D tDepth;
 uniform mat4 uProjInv;
@@ -133,47 +159,46 @@ void main() {
   gl_FragColor = vec4(acc, acc, acc, 1.0);
 }`;
 
-/** Full-res pass: nearest upscale + CRT treatment. */
-const CRT = /* glsl */ `
+/** Final pass: FXAA edge smoothing, then a gentle vignette, film grain and lens fringing. */
+const PRESENT = /* glsl */ `
 uniform sampler2D tLow;
-uniform vec2 uLowRes;
 uniform vec2 uScreen;
-uniform float uScan;
-uniform float uMask;
-uniform float uCurve;
+uniform vec2 uTexel;
 uniform float uVig;
 uniform float uTime;
 uniform float uNoise;
 uniform float uAberr;
 varying vec2 vUv;
-
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-
+vec3 fxaa(vec2 uv, vec2 rcp) {
+  const vec3 L = vec3(0.299, 0.587, 0.114);
+  vec3 nw = texture2D(tLow, uv + vec2(-1.0, -1.0) * rcp).rgb;
+  vec3 ne = texture2D(tLow, uv + vec2( 1.0, -1.0) * rcp).rgb;
+  vec3 sw = texture2D(tLow, uv + vec2(-1.0,  1.0) * rcp).rgb;
+  vec3 se = texture2D(tLow, uv + vec2( 1.0,  1.0) * rcp).rgb;
+  vec3 m = texture2D(tLow, uv).rgb;
+  float lNW = dot(nw, L), lNE = dot(ne, L), lSW = dot(sw, L), lSE = dot(se, L), lM = dot(m, L);
+  float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
+  float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+  if (lMax - lMin < max(0.03, lMax * 0.08)) return m;
+  vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), (lNW + lSW) - (lNE + lSE));
+  float reduce = max((lNW + lNE + lSW + lSE) * 0.03125, 1.0 / 128.0);
+  dir = clamp(dir / (min(abs(dir.x), abs(dir.y)) + reduce), -8.0, 8.0) * rcp;
+  vec3 a = 0.5 * (texture2D(tLow, uv + dir * (1.0 / 3.0 - 0.5)).rgb + texture2D(tLow, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+  vec3 b = a * 0.5 + 0.25 * (texture2D(tLow, uv - dir * 0.5).rgb + texture2D(tLow, uv + dir * 0.5).rgb);
+  float lB = dot(b, L);
+  return (lB < lMin || lB > lMax) ? a : b;
+}
 void main() {
   vec2 uv = gl_FragCoord.xy / uScreen;
   vec2 cc = uv - 0.5;
-  vec2 duv = 0.5 + cc * (1.0 + uCurve * dot(cc, cc));
-  if (duv.x < 0.0 || duv.y < 0.0 || duv.x > 1.0 || duv.y > 1.0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
-  vec2 lp = duv * uLowRes;
-  vec2 cell = floor(lp);
-  vec2 f = lp - cell;
-  vec3 c = texture2D(tLow, (cell + 0.5) / uLowRes).rgb;
-  float ab = uAberr * length(cc) * 2.0;
-  if (ab > 0.001) {
-    c.r = mix(c.r, texture2D(tLow, (cell + vec2(-1.0, 0.0) + 0.5) / uLowRes).r, ab);
-    c.b = mix(c.b, texture2D(tLow, (cell + vec2(1.0, 0.0) + 0.5) / uLowRes).b, ab);
-  }
-  float s = abs(f.y - 0.5) * 2.0;
-  c *= 1.0 - uScan * s * s;
-  float mx = mod(floor(gl_FragCoord.x), 3.0);
-  vec3 mask = vec3(mx < 1.0 ? 1.0 : 1.0 - uMask, (mx >= 1.0 && mx < 2.0) ? 1.0 : 1.0 - uMask, mx >= 2.0 ? 1.0 : 1.0 - uMask);
-  c *= mask * (1.0 + uMask * 0.6);
-  float vig = 16.0 * duv.x * duv.y * (1.0 - duv.x) * (1.0 - duv.y);
+  vec3 c = fxaa(uv, uTexel);
+  vec2 shift = cc * uAberr * 0.012;
+  c.r = mix(c.r, texture2D(tLow, uv - shift).r, 0.35);
+  c.b = mix(c.b, texture2D(tLow, uv + shift).b, 0.35);
+  float vig = 16.0 * uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y);
   c *= mix(1.0, pow(vig, 0.22), uVig);
-  float edge = min(min(duv.x, 1.0 - duv.x), min(duv.y, 1.0 - duv.y));
-  c *= smoothstep(0.0, 0.004, edge);
   c += (hash(gl_FragCoord.xy + fract(uTime) * 91.0) - 0.5) * uNoise;
-  c *= 1.0 + 0.012 * sin(uTime * 110.0);
   gl_FragColor = vec4(c, 1.0);
 }`;
 
@@ -183,9 +208,9 @@ export class RetroPipeline {
     this.scene = scene;
     this.camera = camera;
     this.quality = quality;
-    this.shaftUniforms = shaft;
 
     const nearest = { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false };
+    const linear = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false };
     // HDR targets where the GPU can render to them; plain 8-bit otherwise
     const ext = renderer.extensions;
     const hdr = ext.has('EXT_color_buffer_half_float') || ext.has('EXT_color_buffer_float');
@@ -194,12 +219,14 @@ export class RetroPipeline {
     this.rtScene.depthTexture = new THREE.DepthTexture(4, 4);
     this.rtScene.depthTexture.type = THREE.UnsignedIntType;
     this.rtMask = new THREE.WebGLRenderTarget(4, 4, { ...nearest, depthBuffer: true });
-    const linear = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false, type, depthBuffer: false };
-    this.rtBloomA = new THREE.WebGLRenderTarget(4, 4, linear);
-    this.rtBloomB = new THREE.WebGLRenderTarget(4, 4, linear);
-    this.rtLow = new THREE.WebGLRenderTarget(4, 4, { ...nearest, depthBuffer: false });
-    this.rtShaftA = new THREE.WebGLRenderTarget(4, 4, linear);
-    this.rtShaftB = new THREE.WebGLRenderTarget(4, 4, linear);
+    const half = { ...linear, type, depthBuffer: false };
+    this.rtBloomA = new THREE.WebGLRenderTarget(4, 4, half);
+    this.rtBloomB = new THREE.WebGLRenderTarget(4, 4, half);
+    this.rtShaftA = new THREE.WebGLRenderTarget(4, 4, half);
+    this.rtShaftB = new THREE.WebGLRenderTarget(4, 4, half);
+    this.rtAOA = new THREE.WebGLRenderTarget(4, 4, { ...linear, depthBuffer: false });
+    this.rtAOB = new THREE.WebGLRenderTarget(4, 4, { ...linear, depthBuffer: false });
+    this.rtLow = new THREE.WebGLRenderTarget(4, 4, { ...linear, depthBuffer: false });
 
     this.quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     const tri = new THREE.BufferGeometry();
@@ -210,71 +237,54 @@ export class RetroPipeline {
     this.quadScene = new THREE.Scene();
     this.quadScene.add(this.quad);
 
-    this.brightMat = new THREE.ShaderMaterial({
-      vertexShader: VERT, fragmentShader: BRIGHT,
-      uniforms: { tScene: { value: this.rtScene.texture }, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 0.9 } },
-      depthTest: false, depthWrite: false,
+    const fs = (fragmentShader, uniforms, defines) => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader, uniforms, defines: defines || {}, depthTest: false, depthWrite: false });
+    this.brightMat = fs(BRIGHT, { tScene: { value: this.rtScene.texture }, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 0.95 } });
+    this.blurMat = fs(BLUR, { tInput: { value: null }, uDir: { value: new THREE.Vector2() } });
+    this.aoMat = fs(SSAO, {
+      tDepth: { value: this.rtScene.depthTexture },
+      uProjInv: { value: new THREE.Matrix4() },
+      uProj: { value: new THREE.Matrix4() },
+      uAspect: { value: new THREE.Vector2(1, 1) },
+      uRadius: { value: 0.32 },
+      uIntensity: { value: 1.25 },
     });
-    this.blurMat = new THREE.ShaderMaterial({
-      vertexShader: VERT, fragmentShader: BLUR,
-      uniforms: { tInput: { value: null }, uDir: { value: new THREE.Vector2() } },
-      depthTest: false, depthWrite: false,
+    this.shaftMat = fs(SHAFTS, {
+      ...shaft,
+      tDepth: { value: this.rtScene.depthTexture },
+      uProjInv: { value: new THREE.Matrix4() },
+      uCamWorld: { value: new THREE.Matrix4() },
+      uCamPos: { value: new THREE.Vector3() },
+      uTime: { value: 0 },
+    }, { STEPS: quality.shaftSteps });
+    this.compMat = fs(COMPOSITE, {
+      tScene: { value: this.rtScene.texture },
+      tBloom: { value: this.rtBloomA.texture },
+      tMask: { value: this.rtMask.texture },
+      tShaft: { value: this.rtShaftA.texture },
+      tAO: { value: this.rtAOA.texture },
+      uRes: { value: new THREE.Vector2() },
+      uSunColor: { value: new THREE.Color('#ffb36e') },
+      uShaft: { value: 0.55 },
+      uAO: { value: quality.ao ? 0.85 : 0 },
+      uExposure: { value: 1.35 },
+      uBloom: { value: 0.45 },
+      uHover: { value: 0 },
+      uOutlineW: { value: 1 },
+      uOutline: { value: new THREE.Color('#fff1b8') },
+      uSat: { value: 1.05 },
     });
-    this.shaftMat = new THREE.ShaderMaterial({
-      vertexShader: VERT, fragmentShader: SHAFTS,
-      defines: { STEPS: quality.shaftSteps },
-      uniforms: {
-        ...shaft,
-        tDepth: { value: this.rtScene.depthTexture },
-        uProjInv: { value: new THREE.Matrix4() },
-        uCamWorld: { value: new THREE.Matrix4() },
-        uCamPos: { value: new THREE.Vector3() },
-        uTime: { value: 0 },
-      },
-      depthTest: false, depthWrite: false,
+    this.presentMat = fs(PRESENT, {
+      tLow: { value: this.rtLow.texture },
+      uScreen: { value: new THREE.Vector2() },
+      uTexel: { value: new THREE.Vector2() },
+      uVig: { value: 0.4 },
+      uTime: { value: 0 },
+      uNoise: { value: 0.01 },
+      uAberr: { value: 0.35 },
     });
-    this.compMat = new THREE.ShaderMaterial({
-      vertexShader: VERT, fragmentShader: COMPOSITE,
-      uniforms: {
-        tScene: { value: this.rtScene.texture },
-        tBloom: { value: this.rtBloomA.texture },
-        tMask: { value: this.rtMask.texture },
-        tShaft: { value: this.rtShaftA.texture },
-        uRes: { value: new THREE.Vector2() },
-        uSunColor: { value: new THREE.Color('#ffb36e') },
-        uShaft: { value: 0.6 },
-        uTime: { value: 0 },
-        uExposure: { value: 1.3 },
-        uBloom: { value: 0.55 },
-        uHover: { value: 0 },
-        uOutline: { value: new THREE.Color('#fff1b8') },
-        uLevels: { value: 28 },
-        uDither: { value: 1.0 },
-        uSat: { value: 1.08 },
-        uFade: { value: 1 },
-      },
-      depthTest: false, depthWrite: false,
-    });
-    this.crtMat = new THREE.ShaderMaterial({
-      vertexShader: VERT, fragmentShader: CRT,
-      uniforms: {
-        tLow: { value: this.rtLow.texture },
-        uLowRes: { value: new THREE.Vector2() },
-        uScreen: { value: new THREE.Vector2() },
-        uScan: { value: 0.32 },
-        uMask: { value: 0.1 },
-        uCurve: { value: 0.045 },
-        uVig: { value: 0.55 },
-        uTime: { value: 0 },
-        uNoise: { value: 0.025 },
-        uAberr: { value: 0.18 },
-      },
-      depthTest: false, depthWrite: false,
-    });
-    this.maskMat = retro(new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    this.maskMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     this.hover = [];
     this.hoverAmount = 0;
-    this.crtOn = true;
   }
 
   setSize(cssW, cssH, dpr) {
@@ -284,71 +294,32 @@ export class RetroPipeline {
     const devW = buf.x, devH = buf.y;
     const scale = Math.max(1, Math.round(devH / this.quality.lowH));
     const lw = Math.ceil(devW / scale), lh = Math.ceil(devH / scale);
-    this.scale = scale;
     this.low = new THREE.Vector2(lw, lh);
     this.rtScene.setSize(lw, lh);
     this.rtMask.setSize(lw, lh);
     this.rtLow.setSize(lw, lh);
     const bw = Math.max(1, Math.ceil(lw / 2)), bh = Math.max(1, Math.ceil(lh / 2));
-    this.rtBloomA.setSize(bw, bh);
-    this.rtBloomB.setSize(bw, bh);
-    this.bloomSize = new THREE.Vector2(bw, bh);
-    this.rtShaftA.setSize(bw, bh);
-    this.rtShaftB.setSize(bw, bh);
+    for (const rt of [this.rtBloomA, this.rtBloomB, this.rtShaftA, this.rtShaftB, this.rtAOA, this.rtAOB]) rt.setSize(bw, bh);
+    this.halfSize = new THREE.Vector2(bw, bh);
     this.compMat.uniforms.uRes.value.set(lw, lh);
-    this.crtMat.uniforms.uLowRes.value.set(lw, lh);
-    // each low-res pixel covers exactly scale x scale device pixels
-    this.crtMat.uniforms.uScreen.value.set(lw * scale, lh * scale);
+    this.compMat.uniforms.uOutlineW.value = Math.max(1, Math.round(lh / 450));
+    this.aoMat.uniforms.uAspect.value.set(lh / lw, 1);
+    this.presentMat.uniforms.uScreen.value.set(devW, devH);
+    this.presentMat.uniforms.uTexel.value.set(1 / lw, 1 / lh);
     this.devSize = new THREE.Vector2(devW, devH);
-    retroUniforms.uSnap.value.set(lw / 2, lh / 2);
+    retroUniforms.uSnap.value.set(1e5, 1e5); // no vertex wobble: it read as low-fi at this resolution
     this.camera.aspect = lw / lh;
     this.camera.updateProjectionMatrix();
   }
 
-  /** Map a CSS-pixel pointer to NDC, applying the same CRT curvature the image is drawn with. */
+  /** CSS-pixel pointer -> NDC. */
   pointerToNdc(x, y, cssW, cssH, out = new THREE.Vector2()) {
-    const S = this.crtMat.uniforms.uScreen.value;
-    let u = (x / cssW) * (this.devSize.x / S.x);
-    let v = (1 - y / cssH) * (this.devSize.y / S.y);
-    const k = this.crtMat.uniforms.uCurve.value;
-    if (k > 0) {
-      const cx = u - 0.5, cy = v - 0.5;
-      const f = 1 + k * (cx * cx + cy * cy);
-      u = 0.5 + cx * f;
-      v = 0.5 + cy * f;
-    }
-    return out.set(u * 2 - 1, v * 2 - 1);
+    return out.set((x / cssW) * 2 - 1, 1 - (y / cssH) * 2);
   }
 
-  /** Inverse of pointerToNdc (approximately): world point -> CSS pixel, used to place HTML over 3D objects. */
+  /** NDC -> CSS pixel, used to place HTML over 3D objects. */
   ndcToCss(ndc, cssW, cssH, out = new THREE.Vector2()) {
-    const S = this.crtMat.uniforms.uScreen.value;
-    let u = (ndc.x + 1) / 2, v = (ndc.y + 1) / 2;
-    const k = this.crtMat.uniforms.uCurve.value;
-    if (k > 0) {
-      // invert duv = 0.5 + c * (1 + k|c|^2) with two fixed-point iterations
-      const dx = u - 0.5, dy = v - 0.5;
-      let cx = dx, cy = dy;
-      for (let i = 0; i < 3; i++) {
-        const f = 1 + k * (cx * cx + cy * cy);
-        cx = dx / f;
-        cy = dy / f;
-      }
-      u = 0.5 + cx;
-      v = 0.5 + cy;
-    }
-    return out.set((u * S.x / this.devSize.x) * cssW, (1 - (v * S.y) / this.devSize.y) * cssH);
-  }
-
-  setCRT(on) {
-    this.crtOn = on;
-    const u = this.crtMat.uniforms;
-    u.uScan.value = on ? 0.32 : 0;
-    u.uMask.value = on ? 0.1 : 0;
-    u.uCurve.value = on ? 0.045 : 0;
-    u.uAberr.value = on ? 0.18 : 0;
-    u.uNoise.value = on ? 0.025 : 0;
-    u.uVig.value = on ? 0.55 : 0.3;
+    return out.set(((ndc.x + 1) / 2) * cssW, (1 - (ndc.y + 1) / 2) * cssH);
   }
 
   pass(material, target) {
@@ -357,32 +328,38 @@ export class RetroPipeline {
     this.renderer.render(this.quadScene, this.quadCam);
   }
 
+  blur(src, tmp, k) {
+    this.blurMat.uniforms.tInput.value = src.texture;
+    this.blurMat.uniforms.uDir.value.set(k / this.halfSize.x, 0);
+    this.pass(this.blurMat, tmp);
+    this.blurMat.uniforms.tInput.value = tmp.texture;
+    this.blurMat.uniforms.uDir.value.set(0, k / this.halfSize.y);
+    this.pass(this.blurMat, src);
+  }
+
   render(time, dt) {
     const r = this.renderer;
     const cam = this.camera;
     if (this.raw) {
-      // debug: straight render, no retro treatment
       r.setRenderTarget(null);
       r.toneMapping = THREE.ACESFilmicToneMapping;
       r.render(this.scene, cam);
       return;
     }
-    // 1. scene at low resolution
+    // 1. the scene
     r.setRenderTarget(this.rtScene);
     r.setClearColor(0x000000, 1);
     r.clear();
     r.render(this.scene, cam);
 
     // 2. hover mask
-    const target = this.hover.length ? 1 : 0;
-    this.hoverAmount += (target - this.hoverAmount) * Math.min(1, dt * 12);
+    this.hoverAmount += ((this.hover.length ? 1 : 0) - this.hoverAmount) * Math.min(1, dt * 12);
     if (this.hover.length) {
       for (const m of this.hover) m.layers.enable(2);
       cam.layers.set(2);
       const ov = this.scene.overrideMaterial;
       this.scene.overrideMaterial = this.maskMat;
       r.setRenderTarget(this.rtMask);
-      r.setClearColor(0x000000, 1);
       r.clear();
       r.render(this.scene, cam);
       this.scene.overrideMaterial = ov;
@@ -390,22 +367,24 @@ export class RetroPipeline {
       for (const m of this.hover) m.layers.disable(2);
     }
 
-    // 3. bloom
-    this.brightMat.uniforms.uTexel.value.set(1 / this.low.x, 1 / this.low.y);
-    this.pass(this.brightMat, this.rtBloomA);
-    const passes = this.quality.bloomPasses;
-    for (let i = 0; i < passes; i++) {
-      const s = 1 + i;
-      this.blurMat.uniforms.tInput.value = this.rtBloomA.texture;
-      this.blurMat.uniforms.uDir.value.set(s / this.bloomSize.x, 0);
-      this.pass(this.blurMat, this.rtBloomB);
-      this.blurMat.uniforms.tInput.value = this.rtBloomB.texture;
-      this.blurMat.uniforms.uDir.value.set(0, s / this.bloomSize.y);
-      this.pass(this.blurMat, this.rtBloomA);
+    const res = this.low.y / 330; // keep glows the same size on screen at any resolution
+
+    // 3. ambient occlusion
+    const u = this.compMat.uniforms;
+    if (u.uAO.value > 0) {
+      const au = this.aoMat.uniforms;
+      au.uProjInv.value.copy(cam.projectionMatrixInverse);
+      au.uProj.value.copy(cam.projectionMatrix);
+      this.pass(this.aoMat, this.rtAOA);
+      this.blur(this.rtAOA, this.rtAOB, 0.8 * res);
     }
 
-    // 4. volumetric shafts at half res, softened with one blur
-    const u = this.compMat.uniforms;
+    // 4. bloom
+    this.brightMat.uniforms.uTexel.value.set(1 / this.low.x, 1 / this.low.y);
+    this.pass(this.brightMat, this.rtBloomA);
+    for (let i = 0; i < this.quality.bloomPasses; i++) this.blur(this.rtBloomA, this.rtBloomB, (1 + i) * res);
+
+    // 5. volumetric shafts
     if (u.uShaft.value > 0) {
       const su = this.shaftMat.uniforms;
       su.uProjInv.value.copy(cam.projectionMatrixInverse);
@@ -413,22 +392,13 @@ export class RetroPipeline {
       su.uCamPos.value.setFromMatrixPosition(cam.matrixWorld);
       su.uTime.value = time;
       this.pass(this.shaftMat, this.rtShaftA);
-      this.blurMat.uniforms.tInput.value = this.rtShaftA.texture;
-      this.blurMat.uniforms.uDir.value.set(0.7 / this.bloomSize.x, 0);
-      this.pass(this.blurMat, this.rtShaftB);
-      this.blurMat.uniforms.tInput.value = this.rtShaftB.texture;
-      this.blurMat.uniforms.uDir.value.set(0, 0.7 / this.bloomSize.y);
-      this.pass(this.blurMat, this.rtShaftA);
+      this.blur(this.rtShaftA, this.rtShaftB, 0.7 * res);
     }
 
-    // 5. composite at low res
-    u.uTime.value = time;
+    // 6. composite, then present
     u.uHover.value = this.hoverAmount > 0.01 && this.hover.length ? this.hoverAmount * (0.78 + 0.22 * Math.sin(time * 6)) : 0;
     this.pass(this.compMat, this.rtLow);
-
-    // 6. CRT upscale to the screen
-    this.crtMat.uniforms.uTime.value = time;
-    this.pass(this.crtMat, null);
+    this.presentMat.uniforms.uTime.value = time;
+    this.pass(this.presentMat, null);
   }
 }
-

@@ -5,22 +5,31 @@ import { rng, TAU, clamp } from './util.js';
 /* Low-level helpers                                                   */
 /* ------------------------------------------------------------------ */
 
-export function makeCanvas(w, h) {
+/** Textures are drawn at TEX_SCALE x their design size (2 on desktop for crisp, smooth surfaces). */
+let TEX_SCALE = 1;
+export function setTexScale(s) {
+  TEX_SCALE = s;
+}
+export const texScale = () => TEX_SCALE;
+
+/** A canvas of w x h design units; drawing is automatically scaled to the texture resolution. */
+export function makeCanvas(w, h, s = TEX_SCALE) {
   const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
+  c.width = Math.round(w * s);
+  c.height = Math.round(h * s);
   const g = c.getContext('2d', { willReadFrequently: true });
   g.imageSmoothingEnabled = false;
+  if (s !== 1) g.scale(s, s);
   return [c, g];
 }
 
-export function toTexture(canvas, { repeat = null, srgb = true, mip = true, wrap = false } = {}) {
+export function toTexture(canvas, { repeat = null, srgb = true, mip = true, wrap = false, nearest = false } = {}) {
   const t = new THREE.CanvasTexture(canvas);
   t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-  t.magFilter = THREE.NearestFilter;
-  t.minFilter = mip ? THREE.NearestMipmapLinearFilter : THREE.NearestFilter;
+  t.magFilter = nearest ? THREE.NearestFilter : THREE.LinearFilter;
+  t.minFilter = mip ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
   t.generateMipmaps = mip;
-  t.anisotropy = 1;
+  t.anisotropy = 8;
   if (wrap || repeat) {
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (repeat) t.repeat.set(repeat[0], repeat[1]);
@@ -68,14 +77,17 @@ const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
 const css = (c) => `rgb(${clamp(c[0] | 0, 0, 255)},${clamp(c[1] | 0, 0, 255)},${clamp(c[2] | 0, 0, 255)})`;
 
 /** Fill a canvas pixel by pixel. fn(x, y) -> [r, g, b] or [r, g, b, a]. */
-function paint(w, h, fn) {
-  const [c, g] = makeCanvas(w, h);
-  const img = g.createImageData(w, h);
+function paint(w, h, fn, s = TEX_SCALE) {
+  const [c, g] = makeCanvas(w, h, 1);
+  c.width = Math.round(w * s);
+  c.height = Math.round(h * s);
+  const W = c.width, H = c.height;
+  const img = g.createImageData(W, H);
   const d = img.data;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const p = fn(x, y);
-      const i = (y * w + x) * 4;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const p = fn(x / s, y / s);
+      const i = (y * W + x) * 4;
       d[i] = clamp(p[0], 0, 255);
       d[i + 1] = clamp(p[1], 0, 255);
       d[i + 2] = clamp(p[2], 0, 255);
@@ -93,7 +105,7 @@ function paint(w, h, fn) {
 export function woodCanvas({ w = 128, h = 128, light = '#7a4128', dark = '#3a1a10', rings = 7, seed = 1, contrast = 0.75 } = {}) {
   const L = hexToRgb(light), D = hexToRgb(dark);
   return paint(w, h, (x, y) => {
-    const n = fbm((x / w) * 3, (y / h) * 12, 3, 12, seed, 4);
+    const n = fbm((x / w) * 3, (y / h) * 12, 3, 12, seed, 5);
     const t = (y / h) * rings + n * 2.2 + Math.sin((x / w) * TAU + seed) * 0.35;
     const ring = t - Math.floor(t);
     const line = Math.pow(Math.abs(Math.sin(ring * Math.PI)), 6);
@@ -124,9 +136,9 @@ export function parquetTex() {
     const grain = fbm((horiz ? x : y) / 40, (horiz ? y : x) / 3, 64, 256, 11 + s, 3);
     let col = shade(base, 0.82 + grain * 0.36);
     const edgeA = across % sw;
-    if (edgeA === 0) col = shade(col, 0.55);
-    else if (edgeA === 1) col = shade(col, 1.08);
-    if (lx === 0 || ly === 0) col = shade(col, 0.45);
+    if (edgeA < 0.5) col = shade(col, 0.6);
+    else if (edgeA < 1.2) col = shade(col, 1.06);
+    if (lx < 0.6 || ly < 0.6) col = shade(col, 0.5);
     void along;
     return col;
   });
@@ -138,7 +150,7 @@ export function wallpaperTex() {
   const [c] = paint(64, 64, (x, y) => {
     const sx = x % 32;
     let col = sx >= 10 && sx < 22 ? stripe : base;
-    if (sx === 9 || sx === 22) col = pin;
+    if (Math.floor(sx) === 9 || Math.floor(sx) === 22) col = pin;
     // small damask lozenges in the dark band
     const mx = (x + 16) % 32 - 16, my = (y % 32) - 16;
     if (sx < 10 || sx >= 22) {
@@ -155,22 +167,24 @@ export function wallpaperTex() {
 /** Raised wood panel, used for wainscoting, cabinet doors and desk panels. */
 export function panelTex({ light = '#6a3420', dark = '#2e140b', seed = 4, frame = 14, bevel = 4 } = {}) {
   const [wc] = woodCanvas({ w: 128, h: 128, light, dark, seed, rings: 6 });
-  const wood = wc.getContext('2d').getImageData(0, 0, 128, 128).data;
+  const WW = wc.width;
+  const wood = wc.getContext('2d').getImageData(0, 0, WW, WW).data;
+  const k = WW / 128;
   const [c] = paint(128, 128, (x, y) => {
-    const i = (y * 128 + x) * 4;
+    const i = (Math.min(WW - 1, Math.floor(y * k)) * WW + Math.min(WW - 1, Math.floor(x * k))) * 4;
     let col = [wood[i], wood[i + 1], wood[i + 2]];
     const ix = x - frame, iy = y - frame, iw = 128 - frame * 2;
     const inPanel = ix >= 0 && iy >= 0 && ix < iw && iy < iw;
     if (!inPanel) {
-      if (x === 0 || y === 0) col = shade(col, 1.25);
-      if (x === 127 || y === 127) col = shade(col, 0.6);
+      if (x < 1 || y < 1) col = shade(col, 1.2);
+      if (x > 127 || y > 127) col = shade(col, 0.65);
       return col;
     }
     const e = Math.min(ix, iy, iw - 1 - ix, iw - 1 - iy);
     if (e < bevel) {
       // light falls from the top-left: those bevels are bright, the others dark
-      col = shade(col, Math.min(ix, iy) === e ? 1.22 : 0.62);
-      if (e === 0) col = shade(col, 0.55);
+      col = shade(col, Math.min(ix, iy) === e ? 1.18 : 0.66);
+      if (e < 0.6) col = shade(col, 0.6);
     } else {
       col = shade(col, 1.05);
     }
@@ -186,12 +200,12 @@ export function leatherInlayTex() {
     const n = fbm(x / 9, y / 9, 1e3, 1e3, 21, 3);
     let col = shade(base, 0.75 + n * 0.5);
     const e = Math.min(x, y, W - 1 - x, H - 1 - y);
-    if (e === 5 || e === 6) col = gold;
-    if (e === 9) col = shade(gold, 0.8);
+    if (e >= 5 && e < 7) col = gold;
+    if (e >= 9 && e < 9.7) col = shade(gold, 0.8);
     if (e < 3) col = shade(col, 0.6);
     // tooled corner fleurons
     const cx = Math.min(x, W - 1 - x), cy = Math.min(y, H - 1 - y);
-    if (cx > 10 && cy > 10 && cx < 20 && cy < 20 && (cx + cy) % 4 === 0) col = shade(gold, 0.9);
+    if (cx > 10 && cy > 10 && cx < 20 && cy < 20 && Math.floor(cx + cy) % 4 === 0) col = shade(gold, 0.9);
     return col;
   });
   return toTexture(c);
@@ -249,7 +263,7 @@ export function rugTex() {
     else if (e < 12) {
       col = navy;
       const t = (x + y) % 12;
-      if (e > 5 && e < 10 && (t === 0 || t === 6)) col = gold;
+      if (e > 5 && e < 10 && (Math.floor(t) === 0 || Math.floor(t) === 6)) col = gold;
     } else if (e < 14) col = gold;
     else if (e < 26) {
       col = deep;
@@ -263,7 +277,7 @@ export function rugTex() {
       const nx = (x - W / 2) / (W / 2 - 28), ny = (y - H / 2) / (H / 2 - 28);
       const d = Math.abs(nx) * 1.0 + Math.abs(ny) * 1.25;
       col = red;
-      if (((x >> 3) + (y >> 3)) % 2 === 0 && x % 8 === 4 && y % 8 === 4) col = deep;
+      if (((x >> 3) + (y >> 3)) % 2 === 0 && Math.floor(x % 8) === 4 && Math.floor(y % 8) === 4) col = deep;
       if (d < 0.62) col = navy;
       if (d < 0.56 && d > 0.53) col = gold;
       if (d < 0.42) col = deep;
@@ -297,7 +311,7 @@ const BOOK_COLORS = [
 export function bookAtlas(seed = 12) {
   const CW = 16, CH = 64, COLS = 64, ROWS = 8;
   const W = CW * COLS, H = CH * ROWS + 32;
-  const [c, g] = makeCanvas(W, H);
+  const [c, g] = makeCanvas(W, H, Math.min(2, TEX_SCALE));
   const r = rng(seed);
   const cells = [];
   const gold = '#d7b25a';
@@ -757,7 +771,7 @@ export function skyTex() {
   const [c] = paint(W, H, (x, y) => {
     const t = y / H;
     let col = sample(t);
-    const cl = fbm(x / 60, y / 5, 1e3, 1e3, 5, 4);
+    const cl = fbm(x / 60, y / 5, 1e3, 1e3, 5, 5);
     const band = Math.max(0, cl - 0.55) * 2.6 * (t > 0.2 && t < 0.58 ? 1 : 0);
     col = mixc(col, t < 0.42 ? hexToRgb('#6a2f5e') : hexToRgb('#ff8f6a'), clamp(band, 0, 0.8));
     const d = Math.hypot((x - sunX) / 1.0, (y - sunY) / 1.0);
@@ -911,13 +925,13 @@ export function certificateTex() {
 
 export function samplerTex() {
   const W = 120, H = 80;
-  const [c, g] = makeCanvas(W, H);
+  const [c, g] = makeCanvas(W, H, 1);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     g.fillStyle = (x + y) % 2 ? '#e8dcc0' : '#ded1b2';
     g.fillRect(x, y, 1, 1);
   }
   // Rasterise text, then re-draw as cross-stitch pixels.
-  const [tc, tg] = makeCanvas(W, H);
+  const [tc, tg] = makeCanvas(W, H, 1);
   tg.fillStyle = '#000';
   tg.textAlign = 'center';
   tg.font = '13px VT323, monospace';
@@ -941,7 +955,7 @@ export function samplerTex() {
     g.fillRect(4, y, 2, 2);
     g.fillRect(W - 6, y, 2, 2);
   }
-  return toTexture(c);
+  return toTexture(c, { nearest: true });
 }
 
 export function paintingTex() {
@@ -957,7 +971,7 @@ export function paintingTex() {
     if (y > H * 0.72) {
       const ref = H * 0.72 - (y - H * 0.72);
       col = mixc(hexToRgb('#3d3a5a'), hexToRgb('#e08a6a'), clamp(1 - (y - H * 0.72) / 20, 0, 1) * 0.6);
-      if (Math.abs(x - W * 0.62) < 6 - (y - H * 0.72) * 0.15 && (y % 3 === 0)) col = hexToRgb('#ffd29a');
+      if (Math.abs(x - W * 0.62) < 6 - (y - H * 0.72) * 0.15 && Math.floor(y % 3) === 0) col = hexToRgb('#ffd29a');
       void ref;
     }
     if (y > H * 0.86) col = hexToRgb('#2a2234');
@@ -1144,7 +1158,7 @@ export function globeTex() {
     g.stroke();
   }
   // antique varnish
-  const img = g.getImageData(0, 0, W, H);
+  const img = g.getImageData(0, 0, c.width, c.height);
   for (let i = 0; i < img.data.length; i += 4) {
     const k = 0.9 + hash2(i, 7, 3) * 0.1;
     img.data[i] = img.data[i] * k * 1.02;

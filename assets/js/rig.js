@@ -35,6 +35,10 @@ export class Rig {
     this.aspect = 16 / 9;
     this.shift = 0;
     this.shiftTarget = 0;
+    // cursor-look: where the cursor is (-1..1), how strongly to follow it, and whether it's active
+    this.fol = { x: 0, y: 0 };
+    this.followOn = false;
+    this.followScale = 1;
     this.shiftPitch = 0;
     this.shiftPitchTarget = 0;
   }
@@ -130,10 +134,11 @@ export class Rig {
     this.look.pitch = clamp(this.look.pitch, -pr, pr);
   }
 
-  setParallax(nx, ny) {
-    if (this.reduced) return;
-    this.par.tx = -nx * 0.035;
-    this.par.ty = -ny * 0.022;
+  /** Look toward the cursor: nx, ny in -1..1 from the screen centre. */
+  follow(nx, ny) {
+    this.followOn = true;
+    this.fol.x = clamp(nx, -1, 1);
+    this.fol.y = clamp(ny, -1, 1);
   }
 
   get moving() {
@@ -156,8 +161,19 @@ export class Rig {
         this.pitch = tw.to.pitch;
         tw.onDone && tw.onDone();
       }
+    } else if (this.view && this.followOn) {
+      // Turn toward the cursor, but always slower than the cursor itself moves across the
+      // picture (gain < 1), so whatever you reach for drifts toward the pointer instead of away.
+      const tv = Math.tan((this.fov * DEG) / 2);
+      const th = tv * this.aspect;
+      const k = (this.view.lookScale ?? 1) * this.followScale;
+      const ty = -this.fol.x * 0.65 * th * k;
+      const tp = -this.fol.y * 0.55 * tv * k;
+      const s = this.reduced ? 1 : 1 - Math.exp(-dt * 3.2);
+      this.look.yaw += (ty - this.look.yaw) * s;
+      this.look.pitch += (tp - this.look.pitch) * s;
     } else if (this.view && !this.dragging) {
-      // inertia, then a soft pull back toward the composed view
+      // touch: inertia from a drag, then a soft pull back toward the composed view
       this.look.yaw += this.look.vy * dt;
       this.look.pitch += this.look.vp * dt;
       const damp = Math.exp(-dt * 5);

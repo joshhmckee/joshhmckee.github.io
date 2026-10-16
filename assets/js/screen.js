@@ -6,19 +6,19 @@ const FG = '#46ff86', DIM = '#1f9a4c', BG = '#03100a';
 
 /** Re-draw a chart image as phosphor pixels (bars light up, paper goes dark). */
 function phosphorChart(img, w, h) {
-  const [c, g] = makeCanvas(w, h);
+  const [c, g] = makeCanvas(w, h, 2);
   g.fillStyle = BG;
   g.fillRect(0, 0, w, h);
   if (!img) return c;
-  const [t, tg] = makeCanvas(w, h);
+  const [t, tg] = makeCanvas(w, h, 2);
   tg.imageSmoothingEnabled = true;
   try {
     tg.drawImage(img, 0, 0, w, h);
   } catch (e) {
     return c;
   }
-  const src = tg.getImageData(0, 0, w, h);
-  const out = g.getImageData(0, 0, w, h);
+  const src = tg.getImageData(0, 0, t.width, t.height);
+  const out = g.getImageData(0, 0, c.width, c.height);
   for (let i = 0; i < src.data.length; i += 4) {
     const r = src.data[i], gg = src.data[i + 1], b = src.data[i + 2];
     const lum = (0.299 * r + 0.587 * gg + 0.114 * b) / 255;
@@ -71,7 +71,7 @@ export class CRTScreen {
       mg.fill('evenodd');
       this.mask = m;
     }
-    this.g.drawImage(this.mask, 0, 0);
+    this.g.drawImage(this.mask, 0, 0, W, H);
   }
 
   text(s, x, y, col = FG, size = 16) {
@@ -125,9 +125,10 @@ export class CRTScreen {
     const chart = this.charts[idx];
     if (chart && local > 2.4) {
       const reveal = Math.min(1, (local - 2.4) / 1.6);
-      g.drawImage(chart, 0, 0, chart.width * reveal, chart.height, M + 2, y0 + 34, chart.width * reveal, chart.height);
+      const cw = 140, ch = 60;
+      g.drawImage(chart, 0, 0, chart.width * reveal, chart.height, M + 2, y0 + 34, cw * reveal, ch);
       g.strokeStyle = DIM;
-      g.strokeRect(M + 1.5, y0 + 33.5, chart.width + 1, chart.height + 1);
+      g.strokeRect(M + 1.5, y0 + 33.5, cw + 1, ch + 1);
       this.text(rep.dek ? wrap(rep.dek.toUpperCase(), 15)[0] : '', 164, y0 + 46, DIM);
       this.text(rep.dek ? (wrap(rep.dek.toUpperCase(), 15)[1] || '') : '', 164, y0 + 60, DIM);
       this.text('[ENTER] OPEN', 164, y0 + 86, FG);

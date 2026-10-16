@@ -2,6 +2,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { ROOM } from './layout.js';
 import { std, basic, box, boxB, cyl, put, dynamic, rng, TAU, DEG } from './util.js';
 import * as T from './textures.js';
+import { rubberPlant, snakePlant } from './plants.js';
 
 /** Objects on a wall group: local +z points into the room, local x runs along the wall. */
 function wallGroup(scene, { x, z, rotY }) {
@@ -166,10 +167,10 @@ export function buildDecor(ctx) {
     box(fc, 0.095, 0.004, 0.006, chrome, [fcW / 2, y0 + 0.268, fcD + 0.011], { cast: false });
   });
   // snake plant on top
-  plant(fc, [fcW / 2, fcH, fcD / 2], { small: true });
+  snakePlant(fc, [fcW / 2, fcH, fcD / 2]);
 
   /* ---------------- floor plant between cabinet and door ---------------- */
-  plant(scene, [2.56, 0, 0.1], { small: false });
+  rubberPlant(scene, [2.56, 0, 0.1]);
 
   /* ---------------- coat rack with fedora ---------------- */
   const coat = new THREE.Group();
@@ -210,52 +211,6 @@ export function buildDecor(ctx) {
   void basic;
 }
 
-function plant(parent, [px, py, pz], { small }) {
-  const r = rng(small ? 5 : 6);
-  const g = new THREE.Group();
-  g.position.set(px, py, pz);
-  parent.add(g);
-  const pot = std({ color: small ? '#d9cdb0' : '#8f4a2b', roughness: 0.7 });
-  const soil = std({ color: '#2a1a10', roughness: 1 });
-  const leaf = std({ color: small ? '#3d6b3a' : '#2c5a2c', roughness: 0.45, side: THREE.DoubleSide });
-  const leafDark = std({ color: '#1f4220', roughness: 0.5, side: THREE.DoubleSide });
-  if (small) {
-    cyl(g, 0.07, 0.055, 0.12, 12, pot, [0, 0.06, 0]);
-    cyl(g, 0.065, 0.065, 0.01, 12, soil, [0, 0.115, 0], { cast: false });
-    for (let i = 0; i < 9; i++) {
-      const a = r.range(0, TAU);
-      const h = r.range(0.25, 0.45);
-      const lg = new THREE.PlaneGeometry(0.04, h, 1, 3);
-      lg.translate(0, h / 2, 0);
-      put(g, lg, i % 2 ? leaf : leafDark, [Math.cos(a) * 0.025, 0.11, Math.sin(a) * 0.025], { r: [r.range(-0.2, 0.2), a, r.range(-0.15, 0.15)] });
-    }
-    return g;
-  }
-  cyl(g, 0.17, 0.13, 0.36, 14, pot, [0, 0.18, 0]);
-  cyl(g, 0.18, 0.18, 0.03, 14, pot, [0, 0.35, 0]);
-  cyl(g, 0.16, 0.16, 0.01, 14, soil, [0, 0.36, 0], { cast: false });
-  const stemMat = std({ color: '#4a3a24', roughness: 0.8 });
-  for (let s = 0; s < 4; s++) {
-    const a = (s / 4) * TAU + 0.3;
-    const lean = r.range(0.1, 0.28);
-    const h = r.range(0.8, 1.25);
-    const stem = new THREE.Group();
-    stem.position.set(Math.cos(a) * 0.04, 0.36, Math.sin(a) * 0.04);
-    stem.rotation.set(Math.sin(a) * lean, 0, -Math.cos(a) * lean);
-    g.add(stem);
-    cyl(stem, 0.008, 0.012, h, 5, stemMat, [0, h / 2, 0]);
-    for (let l = 0; l < 7; l++) {
-      const t = 0.3 + (l / 7) * 0.7;
-      const la = r.range(0, TAU);
-      const lf = new THREE.Group();
-      lf.position.set(0, h * t, 0);
-      lf.rotation.set(0, la, 0);
-      stem.add(lf);
-      put(lf, new THREE.SphereGeometry(0.075, 7, 4), l % 2 ? leaf : leafDark, [0.08, 0, 0], { s: [1.25, 0.12, 0.55], r: [0, 0, r.range(-0.6, 0.1)] });
-    }
-  }
-  return g;
-}
 
 function floorClutter(ctx) {
   const { scene, mats } = ctx;
@@ -290,7 +245,7 @@ function floorClutter(ctx) {
   cyl(scene, 0.12, 0.12, 0.01, 14, wicker, [1.42, 0.005, -0.72]);
   const crumple = std({ color: '#ece4cf', roughness: 0.95, flatShading: true });
   const ball = new THREE.IcosahedronGeometry(0.045, 0);
-  [[1.42, 0.3, -0.72], [1.36, 0.29, -0.68], [1.47, 0.31, -0.75], [1.2, 0.04, -0.5], [1.6, 0.04, -0.45], [0.95, 0.04, 0.1]].forEach((p, i) => {
+  [[1.42, 0.3, -0.72], [1.36, 0.29, -0.68], [1.47, 0.31, -0.75], [1.2, 0.04, -0.5], [1.6, 0.04, -0.45], [1.05, 0.04, -0.22]].forEach((p, i) => {
     put(scene, ball, crumple, p, { r: [i, i * 2, i * 3], s: [1, 0.85 + (i % 3) * 0.1, 1] });
   });
 }

@@ -544,3 +544,89 @@ export function buildResearchPiles(ctx, reports) {
   void mats;
   return piles;
 }
+
+/* ------------------------------------------------------------------ */
+/* A can of Guayakí yerba mate (Enlighten Mint)                        */
+/* ------------------------------------------------------------------ */
+
+function mateLabelTex() {
+  const W = 256, H = 128;
+  const [c, g] = T.makeCanvas(W, H);
+  const r = rng(58);
+  const grad = g.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#1d8a5c');
+  grad.addColorStop(0.5, '#2fb37a');
+  grad.addColorStop(1, '#17744d');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+  // textile-style zigzag bands top and bottom
+  for (const y0 of [6, H - 18]) {
+    g.fillStyle = '#0f5a3a';
+    g.fillRect(0, y0, W, 12);
+    g.strokeStyle = '#d9f2c8';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    for (let x = 0; x <= W; x += 8) g.lineTo(x, y0 + (x % 16 === 0 ? 2 : 10));
+    g.stroke();
+  }
+  // mint leaves wrapping the can
+  for (let i = 0; i < 14; i++) {
+    const x = r() * W, y = r.range(26, H - 30), a = r.range(-1, 1), s = r.range(7, 13);
+    g.save();
+    g.translate(x, y);
+    g.rotate(a);
+    g.fillStyle = r.chance(0.5) ? '#0f6a43' : '#5fcf8f';
+    g.beginPath();
+    g.ellipse(0, 0, s, s * 0.45, 0, 0, TAU);
+    g.fill();
+    g.strokeStyle = 'rgba(220,255,220,0.5)';
+    g.lineWidth = 0.8;
+    g.beginPath();
+    g.moveTo(-s, 0);
+    g.lineTo(s, 0);
+    g.stroke();
+    g.restore();
+  }
+  // the front of the label is at u = 0.5
+  g.fillStyle = 'rgba(10,60,38,0.55)';
+  g.fillRect(W / 2 - 44, 30, 88, 66);
+  g.fillStyle = '#ffffff';
+  g.textAlign = 'center';
+  g.font = 'bold 19px Georgia, "Times New Roman", serif';
+  g.fillText('GUAYAKÍ', W / 2, 52);
+  g.font = 'bold 10px Georgia, serif';
+  g.fillText('YERBA MATE', W / 2, 66);
+  g.fillStyle = '#f6e27a';
+  g.font = 'bold 11px Georgia, serif';
+  g.fillText('ENLIGHTEN', W / 2, 80);
+  g.fillText('MINT', W / 2, 91);
+  return T.toTexture(c);
+}
+
+export function buildMate(ctx, [px, pz] = [0.93, -0.4]) {
+  const { scene } = ctx;
+  const g = dynamic(new THREE.Group());
+  g.position.set(px, Y, pz);
+  g.rotation.y = Math.PI + 0.35; // turn the logo toward the room
+  g.name = 'mate';
+  scene.add(g);
+  const alu = std({ color: '#d9dcdf', roughness: 0.22, metalness: 0.95 });
+  const label = std({ map: mateLabelTex(), roughness: 0.28, metalness: 0.55 });
+  const R = 0.033, Hc = 0.168;
+  // base: domed bottom and chime
+  const base = [[0, 0.004], [0.022, 0.0], [0.028, 0.002], [R, 0.012], [R, 0.014]].map(([x, y]) => new THREE.Vector2(x, y));
+  put(g, new THREE.LatheGeometry(base, 40), alu, [0, 0, 0]);
+  put(g, new THREE.CylinderGeometry(R, R, Hc - 0.03, 48, 1, true), label, [0, 0.014 + (Hc - 0.03) / 2, 0]);
+  // neck, rim and recessed lid
+  const top = [[R, Hc - 0.016], [0.031, Hc - 0.009], [0.0275, Hc - 0.002], [0.0278, Hc], [0.026, Hc - 0.001], [0.025, Hc - 0.006], [0, Hc - 0.006]]
+    .map(([x, y]) => new THREE.Vector2(x, y));
+  put(g, new THREE.LatheGeometry(top, 40), alu, [0, 0, 0]);
+  const tab = new THREE.Shape();
+  tab.absarc(0, 0, 0.007, 0, TAU);
+  const hole = new THREE.Path();
+  hole.absarc(0, 0.001, 0.0035, 0, TAU);
+  tab.holes.push(hole);
+  put(g, new THREE.ExtrudeGeometry(tab, { depth: 0.0008, bevelEnabled: false }), alu, [0, Hc - 0.005, 0.008], { r: [-Math.PI / 2, 0, 0], cast: false });
+  ctx.mate = { group: g, wobble: 0 };
+  ctx.anchors.mate = g.localToWorld(new THREE.Vector3(0, 0.1, 0));
+}
