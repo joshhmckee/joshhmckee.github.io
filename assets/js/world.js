@@ -2,7 +2,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { buildRoom } from './room.js';
 import { buildShelves, buildHeroBooks } from './shelves.js';
 import { buildDesk, buildResearchPiles, buildMate } from './desk.js';
-import { buildDecor, buildTapes } from './decor.js';
+import { buildDecor, buildTapes, buildMixtapes } from './decor.js';
 import { buildEffects, shaftUniforms } from './effects.js';
 import { buildDog } from './dog.js';
 import { mergeStatic } from './util.js';
@@ -18,9 +18,10 @@ export function buildWorld({ content, images, quality, screen }) {
   const books = buildHeroBooks(ctx, content.library);
   const piles = buildResearchPiles(ctx, content.reports);
   const tapes = buildTapes(ctx, content.podcasts);
+  const mixtapes = buildMixtapes(ctx, content.songs);
   const dog = buildDog(ctx);
   const shaft = shaftUniforms();
   const fx = buildEffects(ctx, shaft);
   mergeStatic(scene);
-  return { scene, ctx, books, piles, tapes, fx, shaft, dog };
+  return { scene, ctx, books, piles, tapes, mixtapes, fx, shaft, dog };
 }

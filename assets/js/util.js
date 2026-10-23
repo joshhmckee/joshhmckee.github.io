@@ -163,8 +163,8 @@ export function mergeStatic(root) {
     }
     const m = o.material;
     if (Array.isArray(m)) return;
-    const key = `${m.uuid}|${o.castShadow ? 1 : 0}${o.receiveShadow ? 1 : 0}`;
-    if (!groups.has(key)) groups.set(key, { material: m, cast: o.castShadow, receive: o.receiveShadow, items: [] });
+    const key = `${m.uuid}|${o.castShadow ? 1 : 0}${o.receiveShadow ? 1 : 0}|${o.layers.mask}`;
+    if (!groups.has(key)) groups.set(key, { material: m, cast: o.castShadow, receive: o.receiveShadow, layers: o.layers.mask, items: [] });
     groups.get(key).items.push(o);
     victims.push(o);
   });
@@ -202,11 +202,60 @@ export function mergeStatic(root) {
     const mesh = new THREE.Mesh(merged, g.material);
     mesh.castShadow = g.cast;
     mesh.receiveShadow = g.receive;
+    mesh.layers.mask = g.layers;
     mesh.matrixAutoUpdate = false;
     root.add(mesh);
     for (const o of g.items) o.parent && o.parent.remove(o);
   }
   return root;
+}
+
+/**
+ * Merge the meshes inside one movable group into a mesh per material, in the group's own space,
+ * so something like the chair still moves as a whole but draws in a few calls instead of dozens.
+ */
+export function mergeGroup(group) {
+  group.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const byMat = new Map();
+  group.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material) || !o.material.visible) return;
+    const key = `${o.material.uuid}|${o.castShadow ? 1 : 0}${o.receiveShadow ? 1 : 0}`;
+    if (!byMat.has(key)) byMat.set(key, []);
+    byMat.get(key).push(o);
+  });
+  const m = new THREE.Matrix4();
+  for (const items of byMat.values()) {
+    if (items.length < 2) continue;
+    const parts = items.map((o) => {
+      const geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      geo.applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld));
+      if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+      return geo;
+    });
+    const total = parts.reduce((a, g) => a + g.attributes.position.count, 0);
+    const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), uvs = new Float32Array(total * 2);
+    let off = 0;
+    for (const geo of parts) {
+      const c = geo.attributes.position.count;
+      pos.set(geo.attributes.position.array, off * 3);
+      if (geo.attributes.normal) nor.set(geo.attributes.normal.array, off * 3);
+      uvs.set(geo.attributes.uv.array.subarray(0, c * 2), off * 2);
+      off += c;
+      geo.dispose();
+    }
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    merged.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    merged.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    merged.computeBoundingSphere();
+    const mesh = new THREE.Mesh(merged, items[0].material);
+    mesh.castShadow = items[0].castShadow;
+    mesh.receiveShadow = items[0].receiveShadow;
+    group.add(mesh);
+    for (const o of items) o.parent.remove(o);
+  }
+  return group;
 }
 
 /** Mark a subtree as dynamic (excluded from static merging). */

@@ -41,6 +41,7 @@ export function readContent(root = document) {
   });
 
   const library = [...root.querySelectorAll('.library .item[data-id]')].map(resource);
-  const podcasts = [...root.querySelectorAll('.podcasts .item[data-id]')].map(resource);
-  return { reports, library, podcasts };
+  const podcasts = [...root.querySelectorAll('.podcasts .item[data-id]:not(.song)')].map(resource);
+  const songs = [...root.querySelectorAll('.podcasts .song[data-id]')].map((el) => ({ ...resource(el), youtube: el.dataset.youtube || '' }));
+  return { reports, library, podcasts, songs };
 }

@@ -3,6 +3,7 @@ import { ROOM } from './layout.js';
 import { std, basic, box, boxB, cyl, put, dynamic, rng, TAU, DEG } from './util.js';
 import * as T from './textures.js';
 import { rubberPlant, snakePlant } from './plants.js';
+import { buildDiploma } from './diploma.js';
 
 /** Objects on a wall group: local +z points into the room, local x runs along the wall. */
 function wallGroup(scene, { x, z, rotY }) {
@@ -66,9 +67,9 @@ export function buildDecor(ctx) {
   cred.add(tl);
   cyl(tl, 0.06, 0.07, 0.025, 14, mats.brass, [0, 0.0125, 0]);
   cyl(tl, 0.012, 0.012, 0.32, 8, mats.brass, [0, 0.18, 0]);
-  const tlShade = std({ color: '#efdcae', emissive: '#ffbf6a', emissiveIntensity: 0.9, roughness: 0.8, side: THREE.DoubleSide });
+  const tlShade = std({ color: '#efdcae', emissive: '#ffbf6a', emissiveIntensity: 1.5, roughness: 0.8, side: THREE.DoubleSide });
   cyl(tl, 0.07, 0.13, 0.15, 16, tlShade, [0, 0.39, 0], { open: true, cast: false });
-  const tlLight = new THREE.PointLight('#ffc27a', 1.4, 2.6, 1.5);
+  const tlLight = new THREE.PointLight('#ffc27a', 1.8, 3.4, 1.5);
   tlLight.position.set(0, 0.36, 0);
   tl.add(tlLight);
 
@@ -102,30 +103,33 @@ export function buildDecor(ctx) {
     box(parent, border, h, depth, frame, [cz - w / 2 - border / 2, cy, depth / 2]);
     box(parent, border, h, depth, frame, [cz + w / 2 + border / 2, cy, depth / 2]);
   };
-  framed(wall, -1.82, 1.66, 0.86, 0.58, T.paintingTex(), { border: 0.075, depth: 0.05 });
-  // brass picture light washing the painting
+  // the University of Waterloo degree hangs in the place of honour, under the picture light
+  const diploma = buildDiploma(wall, { x: -1.82, y: 1.62 });
+  ctx.diploma = diploma;
+  ctx.anchors.diploma = wall.localToWorld(new THREE.Vector3(-1.82, 1.62, 0.05));
+  // brass picture light washing the diploma
   cyl(wall, 0.018, 0.018, 0.5, 10, mats.brass, [-1.82, 2.08, 0.16], { r: [0, 0, Math.PI / 2], cast: false });
   box(wall, 0.02, 0.02, 0.14, mats.brass, [-1.82, 2.04, 0.08], { cast: false });
   const pl = basic({ color: '#fff0c8' });
   pl.color.setScalar(3);
   box(wall, 0.44, 0.006, 0.012, pl, [-1.82, 2.065, 0.17], { cast: false });
-  const picLight = new THREE.SpotLight('#ffd9a0', 2.2, 1.6, 0.9, 0.8, 1.5);
+  const picLight = new THREE.SpotLight('#ffe8cc', 1.0, 1.6, 1.0, 0.9, 1.5);
   picLight.position.set(X1 - 0.17, 2.05, -1.82);
   picLight.target.position.set(X1 - 0.02, 1.55, -1.82);
   scene.add(picLight, picLight.target);
-  framed(wall, 0.02, 1.86, 0.44, 0.3, T.certificateTex(), { frame: frameDark, border: 0.035, depth: 0.03 });
+  framed(wall, 0.05, 1.75, 0.6, 0.405, T.paintingTex(), { border: 0.06, depth: 0.045 });
   framed(wall, 2.15, 1.55, 0.36, 0.24, T.samplerTex(), { frame: frameDark, border: 0.03, depth: 0.025 });
   // brass wall sconce above the sampler, lighting the door wall
   box(wall, 0.07, 0.13, 0.015, mats.brass, [2.15, 2.02, 0.008]);
   cyl(wall, 0.008, 0.008, 0.12, 6, mats.brass, [2.15, 2.0, 0.07], { r: [Math.PI / 2, 0, 0], cast: false });
-  const sconceShade = std({ color: '#efdcae', emissive: '#ffc070', emissiveIntensity: 1.1, roughness: 0.8, side: THREE.DoubleSide });
+  const sconceShade = std({ color: '#efdcae', emissive: '#ffc070', emissiveIntensity: 1.6, roughness: 0.8, side: THREE.DoubleSide });
   cyl(wall, 0.05, 0.085, 0.12, 14, sconceShade, [2.15, 2.07, 0.13], { open: true, cast: false });
-  const sconce = new THREE.PointLight('#ffc98a', 1.4, 3.4, 1.5);
+  const sconce = new THREE.PointLight('#ffc98a', 1.5, 3.8, 1.5);
   sconce.position.set(X1 - 0.15, 2.0, 2.15);
   scene.add(sconce);
   // calendar
-  box(wall, 0.24, 0.32, 0.004, std({ map: T.calendarTex(new Date()), roughness: 0.9 }), [0.3, 1.4, 0.004], { cast: false });
-  put(wall, new THREE.SphereGeometry(0.006, 6, 4), mats.brass, [0.3, 1.57, 0.006], { cast: false });
+  box(wall, 0.24, 0.32, 0.004, std({ map: T.calendarTex(new Date()), roughness: 0.9 }), [0.3, 1.22, 0.004], { cast: false });
+  put(wall, new THREE.SphereGeometry(0.006, 6, 4), mats.brass, [0.3, 1.39, 0.006], { cast: false });
   // light switch
   box(wall, 0.075, 0.12, 0.008, std({ color: '#b48a3c', roughness: 0.3, metalness: 0.7 }), [0.5, 1.15, 0.004]);
   box(wall, 0.012, 0.03, 0.02, std({ color: '#e9e2cf', roughness: 0.4 }), [0.5, 1.16, 0.014], { r: [0.3, 0, 0] });
@@ -245,7 +249,7 @@ function floorClutter(ctx) {
   cyl(scene, 0.12, 0.12, 0.01, 14, wicker, [1.42, 0.005, -0.72]);
   const crumple = std({ color: '#ece4cf', roughness: 0.95, flatShading: true });
   const ball = new THREE.IcosahedronGeometry(0.045, 0);
-  [[1.42, 0.3, -0.72], [1.36, 0.29, -0.68], [1.47, 0.31, -0.75], [1.2, 0.04, -0.5], [1.6, 0.04, -0.45], [1.05, 0.04, -0.22]].forEach((p, i) => {
+  [[1.42, 0.3, -0.72], [1.36, 0.29, -0.68], [1.47, 0.31, -0.75]].forEach((p, i) => {
     put(scene, ball, crumple, p, { r: [i, i * 2, i * 3], s: [1, 0.85 + (i % 3) * 0.1, 1] });
   });
 }
@@ -288,9 +292,9 @@ function readingNook(ctx) {
   scene.add(fl);
   cyl(fl, 0.15, 0.17, 0.03, 16, mats.brass, [0, 0.015, 0]);
   cyl(fl, 0.012, 0.012, 1.55, 8, mats.brass, [0, 0.8, 0]);
-  const shadeMat = std({ color: '#e8d6aa', emissive: '#ffc070', emissiveIntensity: 0.65, roughness: 0.8, side: THREE.DoubleSide });
+  const shadeMat = std({ color: '#e8d6aa', emissive: '#ffc070', emissiveIntensity: 1.3, roughness: 0.8, side: THREE.DoubleSide });
   cyl(fl, 0.16, 0.24, 0.26, 18, shadeMat, [0, 1.62, 0], { open: true, cast: false });
-  const fill = new THREE.PointLight('#ffc27a', 1.6, 3.2, 1.6);
+  const fill = new THREE.PointLight('#ffc27a', 2.0, 4.2, 1.6);
   fill.position.set(-2.7, 1.5, 2.8);
   scene.add(fill);
 }
@@ -325,6 +329,44 @@ export function buildTapes(ctx, podcasts) {
     tapes.push({ item: p, mesh, home: mesh.position.clone(), homeRot: mesh.rotation.clone(), out: 0, target: 0 });
   });
   return tapes;
+}
+
+/* ------------------------------------------------------------------ */
+/* Mixtapes: cassettes standing in a holder beside the deck            */
+/* ------------------------------------------------------------------ */
+
+const MIX_COLORS = ['#e9e4d6', '#f2c14e', '#7fb7be', '#e07a5f', '#9b8ec4'];
+
+/**
+ * Up to five cassettes standing in a walnut holder on the front of the credenza, labels to the room.
+ * Each one knows where it rests and where it sits inside the deck; main.js flies it between the two.
+ */
+export function buildMixtapes(ctx, songs) {
+  const { cred } = ctx.tapeRack;
+  const { mats } = ctx;
+  const topY = 0.78;
+  const stand = new THREE.Group();
+  stand.position.set(0.38, topY, 0.42);
+  cred.add(stand);
+  box(stand, 0.56, 0.018, 0.06, mats.case, [0, 0.009, 0]);
+  box(stand, 0.56, 0.05, 0.012, mats.case, [0, 0.025, -0.03]);
+  const shell = std({ color: '#1d1c1b', roughness: 0.35 });
+  const n = Math.min(songs.length, 5);
+  // the cassette door, bottom left of the receiver's front panel (receiver at x 0.95, z 0.22 on the credenza; its face is 0.46 x 0.13)
+  const door = new THREE.Vector3(0.95 - 0.169, topY + 0.0325, 0.22 + 0.15);
+  return songs.slice(0, n).map((song, i) => {
+    const label = std({ map: T.cassetteTex({ label: song.short || song.title, color: MIX_COLORS[i % MIX_COLORS.length], seed: 40 + i }), roughness: 0.4 });
+    // standing on its long edge, label (+z) toward the room, leaning back against the lip
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.064, 0.012), [shell, shell, shell, shell, label, shell]);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.position.set(stand.position.x + (i - (n - 1) / 2) * 0.105, topY + 0.05, stand.position.z - 0.004);
+    mesh.rotation.x = -0.18;
+    mesh.name = `song:${song.id}`;
+    dynamic(mesh);
+    cred.add(mesh);
+    return { item: song, mesh, home: mesh.position.clone(), homeTilt: mesh.rotation.x, door, k: 0, target: 0, hover: 0 };
+  });
 }
 
 function ventTex() {

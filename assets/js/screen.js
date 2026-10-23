@@ -50,9 +50,25 @@ export class CRTScreen {
   update(time) {
     if (time - this.last < 0.09) return;
     this.last = time;
+    // most of the time nothing on the screen has changed (just a cursor waiting to blink), so only
+    // repaint and re-upload the texture when what it shows is different
+    const key = this.stateKey(time);
+    if (key === this.lastKey) return;
+    this.lastKey = key;
     this.draw(time);
     this.glass();
     this.texture.needsUpdate = true;
+  }
+
+  /** Everything draw() depends on, coarsely: the same key means the same picture. */
+  stateKey(time) {
+    if (this.mode === 'session') return `s${Math.floor(time * 6) % 2}`;
+    const n = this.reports.length, cycle = 7;
+    const idx = n ? Math.floor(time / cycle) % n : 0;
+    const local = time % cycle;
+    const shown = Math.floor(Math.min(1, local / 2.2) * 200);
+    const reveal = local > 2.4 ? Math.round(Math.min(1, (local - 2.4) / 1.6) * 20) : -1;
+    return `${idx}|${shown}|${reveal}|${Math.floor(time * 2.5) % 2}|${new Date().getDate()}`;
   }
 
   /** Rounded CRT corners and a soft falloff toward the edge of the tube. */

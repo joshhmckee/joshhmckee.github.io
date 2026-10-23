@@ -753,69 +753,7 @@ export function brassPlateTex(text, sub = '') {
   return toTexture(c);
 }
 
-export function skyTex() {
-  const W = 256, H = 160;
-  const stops = [
-    [0.0, '#1d1840'], [0.22, '#3a2660'], [0.4, '#8a3f72'], [0.54, '#e0685a'], [0.64, '#ffa060'], [0.72, '#ffd08a'], [1.0, '#ffe0a0'],
-  ].map(([t, col]) => [t, hexToRgb(col)]);
-  const sample = (t) => {
-    for (let i = 1; i < stops.length; i++) {
-      if (t <= stops[i][0]) {
-        const a = stops[i - 1], b = stops[i];
-        return mixc(a[1], b[1], (t - a[0]) / (b[0] - a[0]));
-      }
-    }
-    return stops[stops.length - 1][1];
-  };
-  const sunX = W * 0.47, sunY = H * 0.6;
-  const [c] = paint(W, H, (x, y) => {
-    const t = y / H;
-    let col = sample(t);
-    const cl = fbm(x / 60, y / 5, 1e3, 1e3, 5, 5);
-    const band = Math.max(0, cl - 0.55) * 2.6 * (t > 0.2 && t < 0.58 ? 1 : 0);
-    col = mixc(col, t < 0.42 ? hexToRgb('#6a2f5e') : hexToRgb('#ff8f6a'), clamp(band, 0, 0.8));
-    const d = Math.hypot((x - sunX) / 1.0, (y - sunY) / 1.0);
-    if (d < 9) col = [255, 245, 214];
-    else col = mixc(col, [255, 210, 150], clamp(1 - d / 60, 0, 1) * 0.6);
-    if (t < 0.32 && hash2(x, y, 41) > 0.996) col = [255, 240, 220];
-    return col;
-  });
-  return toTexture(c, { mip: false });
-}
 
-export function skylineTex(seed = 3, { color = '#2a1636', lit = 0.3, far = false } = {}) {
-  const W = 512, H = 128;
-  const [c, g] = makeCanvas(W, H);
-  const r = rng(seed);
-  g.clearRect(0, 0, W, H);
-  let x = 0;
-  const windows = [];
-  while (x < W) {
-    const bw = r.int(14, 46);
-    const bh = far ? r.int(20, 70) : r.int(30, 118);
-    g.fillStyle = color;
-    g.fillRect(x, H - bh, bw, bh);
-    if (r.chance(0.3)) g.fillRect(x + bw / 2 - 1, H - bh - r.int(6, 18), 2, 18);
-    if (r.chance(0.18) && !far) {
-      g.fillRect(x + 4, H - bh - 8, 10, 8);
-      g.fillRect(x + 6, H - bh - 11, 6, 3);
-    }
-    if (r.chance(0.2)) {
-      g.fillRect(x + 3, H - bh - 4, bw - 6, 4);
-    }
-    for (let wy = H - bh + 5; wy < H - 4; wy += 5) {
-      for (let wx = x + 3; wx < x + bw - 3; wx += 4) {
-        if (r() < lit) windows.push([wx, wy, r.pick(['#ffd27a', '#ffbe5c', '#ffe7a8', '#a9c7ff'])]);
-      }
-    }
-    x += bw + r.int(0, 6);
-  }
-  for (const [wx, wy, col] of windows) {
-    g.fillStyle = col;
-    g.fillRect(wx, wy, 2, 2);
-  }
-  return toTexture(c, { mip: false });
-}
 
 export function clockFaceTex() {
   const S = 128;
@@ -885,43 +823,6 @@ export function calendarTex(date = new Date()) {
   return toTexture(c);
 }
 
-export function certificateTex() {
-  const W = 192, H = 132;
-  const [c, g] = makeCanvas(W, H);
-  paperBase(g, W, H, '#efe7cf');
-  g.strokeStyle = '#2f6b4f';
-  for (let i = 0; i < 3; i++) {
-    g.lineWidth = i === 1 ? 3 : 1;
-    g.strokeRect(5 + i * 4, 5 + i * 4, W - 10 - i * 8, H - 10 - i * 8);
-  }
-  g.lineWidth = 1;
-  g.beginPath();
-  for (let x = 20; x < W - 20; x++) {
-    const y = 22 + Math.sin(x * 0.4) * 2;
-    x === 20 ? g.moveTo(x, y) : g.lineTo(x, y);
-  }
-  g.stroke();
-  g.fillStyle = '#1f3b2b';
-  g.textAlign = 'center';
-  g.font = 'bold 13px Georgia, serif';
-  g.fillText('THE COMPOUNDING COMPANY', W / 2, 40);
-  g.font = '11px VT323, monospace';
-  g.fillText('STOCK CERTIFICATE', W / 2, 52);
-  g.strokeStyle = '#2f6b4f';
-  g.beginPath();
-  g.ellipse(W / 2, 80, 30, 18, 0, 0, TAU);
-  g.stroke();
-  for (let i = 0; i < 9; i++) {
-    g.beginPath();
-    g.ellipse(W / 2, 80, 26 - i * 2.6, 15 - i * 1.5, 0, 0, TAU);
-    g.stroke();
-  }
-  g.font = 'bold 11px Georgia, serif';
-  g.fillText('ONE HUNDRED SHARES', W / 2, 112);
-  g.fillText('100', 26, 34);
-  g.fillText('100', W - 26, 34);
-  return toTexture(c);
-}
 
 export function samplerTex() {
   const W = 120, H = 80;
@@ -1076,23 +977,23 @@ export function hifiTex() {
   }
   // knobs and buttons
   g.fillStyle = '#2a2826';
-  [[24, 46], [56, 46], [210, 20]].forEach(([x, y]) => {
+  [[204, 46], [236, 46], [210, 20]].forEach(([x, y]) => {
     g.beginPath();
-    g.arc(x, y, x === 210 ? 12 : 8, 0, TAU);
+    g.arc(x, y, y === 20 ? 12 : 8, 0, TAU);
     g.fill();
   });
   g.fillStyle = '#8f8b80';
-  [[24, 46], [56, 46], [210, 20]].forEach(([x, y]) => g.fillRect(x - 1, y - (x === 210 ? 10 : 6), 2, 4));
+  [[204, 46], [236, 46], [210, 20]].forEach(([x, y]) => g.fillRect(x - 1, y - (y === 20 ? 10 : 6), 2, 4));
   g.fillStyle = '#3a3836';
   for (let b = 0; b < 6; b++) g.fillRect(80 + b * 14, 42, 10, 8);
-  // cassette door
+  // cassette door, bottom left, where the mixtapes go in
   g.fillStyle = '#1e1c1a';
-  g.fillRect(196, 36, 52, 24);
+  g.fillRect(8, 36, 52, 24);
   g.fillStyle = '#3a3532';
-  g.fillRect(200, 40, 44, 16);
+  g.fillRect(12, 40, 44, 16);
   g.fillStyle = '#c94f3a';
   g.font = '8px VT323, monospace';
-  g.fillText('STEREO CASSETTE', 136, 40);
+  g.fillText('STEREO CASSETTE', 82, 60);
   eg.fillStyle = '#39ff6a';
   eg.fillRect(70, 48, 3, 3);
   return { map: toTexture(c), emissive: toTexture(e) };

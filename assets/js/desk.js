@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { DESK } from './layout.js';
-import { std, basic, box, boxB, cyl, put, tiledBox, dynamic, rng, TAU } from './util.js';
+import { std, basic, box, boxB, cyl, put, tiledBox, dynamic, mergeGroup, rng, TAU } from './util.js';
 import * as T from './textures.js';
 
 export const Y = DESK.top + 0.003; // resting height on the leather inlay
@@ -66,10 +66,12 @@ export function buildDesk(ctx) {
 
 function buildChair(ctx) {
   const { scene, mats } = ctx;
-  const g = new THREE.Group();
+  const g = dynamic(new THREE.Group()); // it can be dragged around the room
+  g.name = 'chair';
   g.position.set(1.34, 0, -0.42);
   g.rotation.y = -2.05;
   scene.add(g);
+  ctx.chair = { group: g, spin: 0 };
   mats.leather = std({ map: T.tuftedTex('#5c1c14'), roughness: 0.42 });
   mats.leatherPlain = std({ color: '#4e1710', roughness: 0.45 });
   mats.chrome = std({ color: '#2b2622', roughness: 0.3, metalness: 0.6 });
@@ -95,6 +97,7 @@ function buildChair(ctx) {
     boxB(g, 0.085, 0.06, 0.46, mats.leatherPlain, [s * 0.33, 0.66, 0.03]);
     boxB(g, 0.05, 0.14, 0.05, mats.chrome, [s * 0.33, 0.52, 0.12]);
   }
+  mergeGroup(g);
 }
 
 function buildLamp(ctx, [lx, ly, lz]) {
@@ -121,7 +124,7 @@ function buildLamp(ctx, [lx, ly, lz]) {
   cyl(g, 0.0015, 0.0015, 0.1, 4, mats.brass, [0.09, 0.27, 0.11], { cast: false });
   put(g, new THREE.SphereGeometry(0.008, 6, 4), mats.brass, [0.09, 0.215, 0.11], { cast: false });
 
-  const spot = new THREE.SpotLight('#ffd49a', 2.6, 3.2, 1.05, 0.7, 1.6);
+  const spot = new THREE.SpotLight('#ffcf8c', 2.8, 3.4, 1.05, 0.8, 1.6);
   spot.position.set(0, 0.32, 0.07);
   g.add(spot);
   const tgt = new THREE.Object3D();
@@ -136,10 +139,10 @@ function buildLamp(ctx, [lx, ly, lz]) {
     spot.shadow.bias = -0.0008;
     spot.shadow.normalBias = 0.01;
   }
-  const glow = new THREE.PointLight('#ffcf8a', 0.4, 1.4, 1.5);
+  const glow = new THREE.PointLight('#ffcf8a', 0.7, 2.4, 1.5);
   glow.position.set(0, 0.36, 0.1);
   g.add(glow);
-  ctx.lamp = { group: g, spot, glow, glass, inner, bulb, on: true, base: { spot: 2.6, glow: 0.4 } };
+  ctx.lamp = { group: g, spot, glow, glass, inner, bulb, on: true, base: { spot: 2.8, glow: 0.7 } };
   ctx.anchors.lamp = g.localToWorld(new THREE.Vector3(0, 0.4, 0.06));
 }
 
@@ -416,17 +419,8 @@ function buildPapers(ctx) {
   pile(scene, { pos: [-0.9, Y + 0.002, -0.47], ry: -0.15, sheets: 6, seed: 4, spread: 0.04 });
   pile(scene, { pos: [0.6, Y, -0.86], ry: 0.62, sheets: 5, seed: 7, spread: 0.03 });
 
-  // bound annual reports, stacked
-  const coverCols = ['#1e2c4f', '#7d2a20', '#e9e4d6', '#1f3b2b', '#a8823a'];
-  const r = rng(77);
-  let ay = Y;
-  for (let i = 0; i < 5; i++) {
-    const t = r.range(0.012, 0.02);
-    const mat = std({ color: coverCols[i % coverCols.length], roughness: 0.7 });
-    box(scene, 0.215, t, 0.28, mat, [-0.02 + r.range(-0.01, 0.01), ay + t / 2, -1.11], { r: [0, r.range(-0.1, 0.1), 0] });
-    ay += t;
-  }
-  put(scene, sheetGeo, mats.paper.tenk[0], [-0.02, ay + 0.001, -1.11], { r: [0, 0.04, 0] });
+  // the books currently being read, stacked spine-out toward the room
+  buildDeskBooks(ctx, [-0.02, -1.1]);
 
   // legal pad + calculator
   const legal = std({ map: T.paperTex('legal', 5), roughness: 0.9 });
@@ -500,6 +494,111 @@ function buildSmallThings(ctx) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Books on the desk                                                   */
+/* ------------------------------------------------------------------ */
+
+// the covers set their titles in heavy condensed sans; Impact is the closest face every system has
+const CONDENSED = 'Oswald, "Arial Narrow", Impact, "Helvetica Neue", Arial, sans-serif';
+
+/**
+ * Bottom of the stack first, fanned a little so each cover shows. Real trim sizes in metres:
+ * h = top to bottom, w = spine to fore-edge, t = thickness. `cover` is the real jacket; the spine
+ * is drawn here to match it.
+ */
+const DESK_BOOKS = [
+  {
+    cover: 'assets/img/books/1929.jpg', h: 0.235, w: 0.159, t: 0.041, at: [-0.035, 0.012], ry: 0.3, bg: '#dc2a1f', back: '#c9271d',
+    spine: [['ANDREW ROSS SORKIN', 'bold 10px ' + CONDENSED, '#ffffff', 0.2], ['1929', 'bold 27px ' + CONDENSED, '#ffffff', 0.55], ['VIKING', 'bold 8px ' + CONDENSED, '#ffffff', 0.9]],
+  },
+  {
+    cover: 'assets/img/books/man-who-solved-the-market.jpg', h: 0.236, w: 0.16, t: 0.033, at: [0.03, -0.008], ry: -0.27, bg: '#1b1b1c', back: '#202022',
+    spine: [['THE MAN WHO SOLVED THE MARKET', 'bold 11px ' + CONDENSED, '#f4e33b', 0.4], ['ZUCKERMAN', 'bold 11px ' + CONDENSED, '#ffffff', 0.8], ['PORTFOLIO', 'bold 7px ' + CONDENSED, '#cfcfcf', 0.94]],
+    chalk: true,
+  },
+  {
+    cover: 'assets/img/books/intelligent-investor.jpg', h: 0.203, w: 0.135, t: 0.036, at: [0, 0.01], ry: 0.06, bg: '#a92b22', back: '#a02820',
+    spine: [['THE INTELLIGENT INVESTOR', 'bold 13px ' + CONDENSED, '#ffffff', 0.42], ['GRAHAM', 'bold 12px ' + CONDENSED, '#ffffff', 0.83], ['HARPER', 'bold 6px ' + CONDENSED, '#e9c36a', 0.95]],
+    border: '#d9b45a',
+  },
+];
+
+/** The spine, as seen lying flat with the spine toward the room: the book's top is on the left, so it reads left to right. */
+function bookSpineTex(b) {
+  const W = Math.round(b.h * 2000), H = Math.round(b.t * 2000);
+  const [c, g] = T.makeCanvas(W, H);
+  g.fillStyle = b.bg;
+  g.fillRect(0, 0, W, H);
+  if (b.chalk) {
+    // faint chalk scribbles, like the equations on the jacket
+    const r = rng(17);
+    g.fillStyle = 'rgba(255,255,255,0.13)';
+    g.font = '7px Georgia, serif';
+    for (let i = 0; i < 40; i++) g.fillText(r.pick(['∫', 'Σ', 'dx', 'π', 'λ', '∂', 'e', '√', '=', 'ω']), r() * W, r() * H + 4);
+  }
+  if (b.border) {
+    g.fillStyle = b.border;
+    g.fillRect(0, 3, W, 1.5);
+    g.fillRect(0, H - 4.5, W, 1.5);
+  }
+  g.textBaseline = 'middle';
+  g.textAlign = 'center';
+  for (const [text, font, color, at] of b.spine) {
+    g.font = font;
+    g.fillStyle = color;
+    g.fillText(text, W * at, H / 2 + 1, W * 0.6);
+  }
+  // a little wear along the hinges
+  g.fillStyle = 'rgba(0,0,0,0.2)';
+  g.fillRect(0, 0, W, 1.5);
+  g.fillRect(0, H - 1.5, W, 1.5);
+  return T.toTexture(c);
+}
+
+/** The front cover: the real jacket, turned to lie with its top to the left and the spine toward the room. */
+function bookCoverTex(b) {
+  const cw = Math.round(b.w * 1000), ch = Math.round(b.h * 1000); // design units, upright
+  const s = 2 * T.texScale();
+  const [c, g] = T.makeCanvas(ch, cw, s);
+  g.setTransform(0, -s, s, 0, 0, cw * s); // upright cover space -> canvas
+  g.fillStyle = b.bg;
+  g.fillRect(0, 0, cw, ch);
+  const tex = T.toTexture(c);
+  const img = new Image();
+  img.onload = () => {
+    g.drawImage(img, 0, 0, cw, ch);
+    tex.needsUpdate = true;
+  };
+  img.src = b.cover;
+  return tex;
+}
+
+/** Page edges: cream with fine leaves. */
+function pageEdgeTex() {
+  const [c, g] = T.makeCanvas(64, 32);
+  g.fillStyle = '#ebe2cc';
+  g.fillRect(0, 0, 64, 32);
+  for (let y = 0; y < 32; y += 1) {
+    g.fillStyle = `rgba(120,100,70,${0.06 + ((y * 7) % 5) * 0.02})`;
+    g.fillRect(0, y, 64, 0.5);
+  }
+  return T.toTexture(c);
+}
+
+function buildDeskBooks(ctx, [bx, bz]) {
+  const { scene } = ctx;
+  const pages = std({ map: pageEdgeTex(), roughness: 0.9 });
+  let y = Y;
+  DESK_BOOKS.forEach((b) => {
+    const spine = std({ map: bookSpineTex(b), roughness: 0.55 });
+    const cover = std({ map: bookCoverTex(b), roughness: 0.5 });
+    const back = std({ color: b.back, roughness: 0.55 });
+    // faces: +x / -x are the top and bottom page edges, +y the front cover, +z the spine, -z the fore-edge
+    put(scene, new THREE.BoxGeometry(b.h, b.t, b.w), [pages, pages, cover, back, spine, pages], [bx + b.at[0], y + b.t / 2, bz + b.at[1]], { r: [0, b.ry, 0] });
+    y += b.t;
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Research piles: one per report, the top sheet shows the real chart  */
 /* ------------------------------------------------------------------ */
 
@@ -549,57 +648,158 @@ export function buildResearchPiles(ctx, reports) {
 /* A can of Guayakí yerba mate (Enlighten Mint)                        */
 /* ------------------------------------------------------------------ */
 
+/** Guayakí Revel Berry: yellow can, red bands, Andean red/orange geometry, the leaf-wreath logo. */
 function mateLabelTex() {
-  const W = 256, H = 128;
-  const [c, g] = T.makeCanvas(W, H);
-  const r = rng(58);
-  const grad = g.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#1d8a5c');
-  grad.addColorStop(0.5, '#2fb37a');
-  grad.addColorStop(1, '#17744d');
-  g.fillStyle = grad;
+  const W = 300, H = 200, cx = W / 2; // u = 0.5 (x = 150) faces the room
+  const [c, g] = T.makeCanvas(W, H, Math.max(2, T.texScale()) * 1.25);
+  const RED = '#c4122c', DEEP = '#8f0f22', ORANGE = '#ef5a24';
+  const SERIF = 'Cinzel, "Trajan Pro", Georgia, serif';
+  // yellow body with a soft vertical sheen, red bands at the shoulders
+  const body = g.createLinearGradient(0, 0, W, 0);
+  body.addColorStop(0, '#f2b814');
+  body.addColorStop(0.5, '#ffd43b');
+  body.addColorStop(1, '#f2b814');
+  g.fillStyle = body;
   g.fillRect(0, 0, W, H);
-  // textile-style zigzag bands top and bottom
-  for (const y0 of [6, H - 18]) {
-    g.fillStyle = '#0f5a3a';
-    g.fillRect(0, y0, W, 12);
-    g.strokeStyle = '#d9f2c8';
-    g.lineWidth = 1.5;
-    g.beginPath();
-    for (let x = 0; x <= W; x += 8) g.lineTo(x, y0 + (x % 16 === 0 ? 2 : 10));
-    g.stroke();
+  for (const [y0, y1] of [[0, 9], [H - 9, H]]) {
+    const band = g.createLinearGradient(0, y0, 0, y1);
+    band.addColorStop(0, y0 === 0 ? '#e8461f' : RED);
+    band.addColorStop(1, y0 === 0 ? RED : '#e8461f');
+    g.fillStyle = band;
+    g.fillRect(0, y0, W, y1 - y0);
   }
-  // mint leaves wrapping the can
-  for (let i = 0; i < 14; i++) {
-    const x = r() * W, y = r.range(26, H - 30), a = r.range(-1, 1), s = r.range(7, 13);
+
+  // a little square meander (Greek key), the motif the pattern is built from
+  const key = (x, y, s, col) => {
+    g.strokeStyle = col;
+    g.lineWidth = s * 0.16;
+    g.beginPath();
+    g.moveTo(x, y + s);
+    g.lineTo(x, y);
+    g.lineTo(x + s, y);
+    g.lineTo(x + s, y + s * 0.75);
+    g.lineTo(x + s * 0.3, y + s * 0.75);
+    g.lineTo(x + s * 0.3, y + s * 0.32);
+    g.lineTo(x + s * 0.68, y + s * 0.32);
+    g.stroke();
+  };
+  const dot = (x, y, r, col) => {
+    g.fillStyle = col;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+  const textZone = (x, y) => Math.abs(x - cx) < 50 && y > 14 && y < 126;
+
+  // rays radiating from behind the logo, wrapping round the can
+  const lx = cx, ly = 47;
+  for (let k = 0; k < 26; k++) {
+    const ang = -Math.PI + (k + 0.5) * (Math.PI * 2) / 26;
+    const ca = Math.cos(ang), sa = Math.sin(ang) * 0.8;
+    for (let rr = 24; rr < 150; rr += 7) {
+      const x = lx + ca * rr * 1.25, y = ly + sa * rr;
+      if (y < 11 || y > H - 74 || textZone(x, y)) continue;
+      const step = Math.floor(rr / 7) % 4;
+      g.save();
+      g.translate(x, y);
+      g.rotate(ang + Math.PI / 2);
+      if (step === 0) key(-2.4, -2.4, 4.8, k % 2 ? RED : DEEP);
+      else if (step === 1) { dot(0, 0, 1.1, ORANGE); dot(0, 2.8, 0.6, RED); }
+      else if (step === 2) { g.fillStyle = RED; g.fillRect(-2.6, -0.6, 5.2, 1.2); g.fillRect(-0.6, -2.6, 1.2, 5.2); }
+      else { dot(-1.6, 0, 0.6, DEEP); dot(1.6, 0, 0.6, DEEP); }
+      g.restore();
+    }
+  }
+  // the back of the can: stacked key bands
+  for (const bx of [8, W - 22]) {
+    for (let y = 14; y < H - 74; y += 9) key(bx + ((y / 9) % 2) * 4, y, 6, (y / 9) % 2 ? RED : ORANGE);
+  }
+
+  // stepped "mountain" towers of key patterns round the bottom of the can
+  const tower = (x, top, w, col1, col2) => {
+    const steps = 6;
+    for (let i = 0; i < steps; i++) {
+      const yy = top + i * ((H - 12 - top) / steps);
+      const half = (w / 2) * ((i + 1) / steps);
+      g.strokeStyle = i % 2 ? col1 : col2;
+      g.lineWidth = 1.1;
+      g.strokeRect(x - half, yy, half * 2, (H - 12 - top) / steps - 1.2);
+      for (let kx = x - half + 1.5; kx < x + half - 5; kx += 6) key(kx, yy + 1.2, 4.2, i % 2 ? col2 : col1);
+    }
+    for (let yy = top - 12; yy < top; yy += 3) dot(x, yy, 0.7, col1);
+  };
+  for (let i = -4; i <= 4; i++) {
+    const x = (cx + i * 38 + W) % W;
+    tower(x, 132 + Math.abs(i % 2) * 8, 30, RED, ORANGE);
+  }
+  for (let x = 4; x < W; x += 5) dot(x, 129, 0.55, RED);
+
+  // lettering
+  const word = (text, y, width, weight, fill, { outline = false } = {}) => {
+    g.font = `${weight} 100px ${SERIF}`;
+    const k = width / g.measureText(text).width;
+    g.save();
+    g.translate(cx, y);
+    g.scale(k, k);
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    if (outline) {
+      g.lineJoin = 'round';
+      g.strokeStyle = '#fff6d0';
+      g.lineWidth = 14;
+      g.strokeText(text, 0, 0);
+      g.fillStyle = DEEP;
+      g.fillText(text, 3, 4);
+    }
+    g.fillStyle = fill;
+    g.fillText(text, 0, 0);
+    g.restore();
+  };
+  const redText = g.createLinearGradient(0, 70, 0, 110);
+  redText.addColorStop(0, '#d01832');
+  redText.addColorStop(1, '#a50f27');
+  word('GUAYAKÍ', 26, 62, 700, RED);
+  word('ORGANIC', 71, 45, 700, RED);
+  word('YERBA', 86, 82, 900, redText, { outline: true });
+  word('MATE', 102, 60, 900, redText, { outline: true });
+  for (let x = cx - 20; x <= cx + 20; x += 2.2) dot(x, 111, 0.45, RED);
+  word('REVEL BERRY', 118, 49, 700, DEEP);
+  g.fillStyle = DEEP;
+  g.font = `600 3.6px ${SERIF}`;
+  g.textAlign = 'left';
+  g.fillText('15.5 fl oz', cx + 40, 143);
+  g.fillText('(458 mL)', cx + 40, 148);
+
+  // the leaf-wreath logo with South America in the middle
+  const leaves = 26;
+  for (let i = 0; i < leaves; i++) {
+    const t = (i / leaves) * TAU;
+    const heart = 1 + 0.16 * Math.max(0, Math.sin(t)) ** 3; // a little point at the bottom
+    const x = lx + Math.cos(t) * 12.5, y = ly + Math.sin(t) * 12.5 * heart;
     g.save();
     g.translate(x, y);
-    g.rotate(a);
-    g.fillStyle = r.chance(0.5) ? '#0f6a43' : '#5fcf8f';
+    g.rotate(t + Math.PI / 2 + (i % 2 ? 0.5 : -0.5));
+    g.fillStyle = i % 3 === 0 ? '#2e7d4f' : '#1d5a36';
     g.beginPath();
-    g.ellipse(0, 0, s, s * 0.45, 0, 0, TAU);
+    g.ellipse(0, 0, 4.6, 2.2, 0, 0, TAU);
     g.fill();
-    g.strokeStyle = 'rgba(220,255,220,0.5)';
-    g.lineWidth = 0.8;
+    g.strokeStyle = 'rgba(240,250,235,0.85)';
+    g.lineWidth = 0.35;
+    g.stroke();
     g.beginPath();
-    g.moveTo(-s, 0);
-    g.lineTo(s, 0);
+    g.moveTo(-3.6, 0);
+    g.lineTo(3.6, 0);
     g.stroke();
     g.restore();
   }
-  // the front of the label is at u = 0.5
-  g.fillStyle = 'rgba(10,60,38,0.55)';
-  g.fillRect(W / 2 - 44, 30, 88, 66);
-  g.fillStyle = '#ffffff';
-  g.textAlign = 'center';
-  g.font = 'bold 19px Georgia, "Times New Roman", serif';
-  g.fillText('GUAYAKÍ', W / 2, 52);
-  g.font = 'bold 10px Georgia, serif';
-  g.fillText('YERBA MATE', W / 2, 66);
-  g.fillStyle = '#f6e27a';
-  g.font = 'bold 11px Georgia, serif';
-  g.fillText('ENLIGHTEN', W / 2, 80);
-  g.fillText('MINT', W / 2, 91);
+  g.fillStyle = '#fbfaf2';
+  g.beginPath();
+  g.arc(lx, ly, 7, 0, TAU);
+  g.fill();
+  g.fillStyle = '#1d5a36';
+  g.beginPath();
+  [[-0.5, -0.9], [-0.05, -1.0], [0.25, -0.75], [0.6, -0.55], [0.55, -0.2], [0.35, 0.05], [0.2, 0.35], [0.05, 0.6], [-0.05, 0.95], [-0.15, 0.7], [-0.2, 0.3], [-0.35, 0.0], [-0.6, -0.4]]
+    .forEach(([x, y], i) => (i ? g.lineTo(lx + x * 5.2, ly + y * 5.6) : g.moveTo(lx + x * 5.2, ly + y * 5.6)));
+  g.closePath();
+  g.fill();
   return T.toTexture(c);
 }
 
@@ -611,7 +811,7 @@ export function buildMate(ctx, [px, pz] = [0.93, -0.4]) {
   g.name = 'mate';
   scene.add(g);
   const alu = std({ color: '#d9dcdf', roughness: 0.22, metalness: 0.95 });
-  const label = std({ map: mateLabelTex(), roughness: 0.28, metalness: 0.55 });
+  const label = std({ map: mateLabelTex(), roughness: 0.26, metalness: 0.3 });
   const R = 0.033, Hc = 0.168;
   // base: domed bottom and chime
   const base = [[0, 0.004], [0.022, 0.0], [0.028, 0.002], [R, 0.012], [R, 0.014]].map(([x, y]) => new THREE.Vector2(x, y));

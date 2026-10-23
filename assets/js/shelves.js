@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { std, box, boxB, cyl, put, dynamic, rng, TAU } from './util.js';
+import { std, box, boxB, cyl, put, dynamic, mergeGroup, rng, TAU } from './util.js';
 import * as T from './textures.js';
 import { pothos } from './plants.js';
 
@@ -133,7 +133,10 @@ export function buildShelves(ctx) {
         fillShelf({ builder, atlas, r, g, x0, x1, y, clearance, decor });
       }
     }
-    if (c.ladder) buildLadder(g, c, mats);
+    if (c.ladder) {
+      ctx.ladder = buildLadder(g, c, mats);
+      pictureLights(g, c, mats);
+    }
   }
 
   const booksMesh = builder.build(mats.books);
@@ -200,11 +203,27 @@ function buildCase(g, c, mats) {
   box(g, L + 0.09, 0.03, D + 0.065, mats.case, [L / 2, H - 0.002, D / 2 + 0.02]);
 }
 
+/** Brass picture lights along the top of the long bookcase. */
+function pictureLights(g, c, mats) {
+  const bayW = c.length / c.bays;
+  const glow = new THREE.MeshBasicMaterial({ color: '#ffe2b0' });
+  glow.color.multiplyScalar(2.6);
+  const y = CASE_H - 0.15;
+  for (let b = 0; b < c.bays; b++) {
+    const x = (b + 0.5) * bayW;
+    cyl(g, 0.016, 0.016, bayW * 0.55, 10, mats.brass, [x, y, CASE_D + 0.09], { r: [0, 0, Math.PI / 2], cast: false });
+    cyl(g, 0.008, 0.008, bayW * 0.5, 6, glow, [x, y - 0.014, CASE_D + 0.085], { r: [0, 0, Math.PI / 2], cast: false });
+    box(g, 0.02, 0.02, 0.1, mats.brass, [x, y + 0.01, CASE_D + 0.04], { cast: false });
+  }
+}
+
+/** A library ladder hooked over a brass rail; it rolls along the rail (local x) when dragged. */
 function buildLadder(g, c, mats) {
   const lx = c.ladder;
   const rail = cyl(g, 0.012, 0.012, c.length - 0.1, 8, mats.brass, [c.length / 2, 2.62, CASE_D + 0.05], { r: [0, 0, Math.PI / 2] });
   void rail;
-  const lad = new THREE.Group();
+  const lad = dynamic(new THREE.Group());
+  lad.name = 'ladder';
   lad.position.set(lx, 0, CASE_D + 0.5);
   lad.rotation.x = -Math.atan2(0.45, 2.62);
   g.add(lad);
@@ -215,6 +234,12 @@ function buildLadder(g, c, mats) {
     put(lad, new THREE.TorusGeometry(0.03, 0.007, 6, 10, Math.PI), mats.brass, [s * 0.22, len - 0.02, -0.02], { r: [0, Math.PI / 2, 0] });
     cyl(lad, 0.025, 0.025, 0.02, 10, mats.brass, [s * 0.22, 0.02, 0.02], { r: [0, 0, Math.PI / 2] });
   }
+  // rails and rungs are thin: an invisible panel over the whole ladder makes it easy to grab
+  const grab = new THREE.Mesh(new THREE.PlaneGeometry(0.56, len), new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }));
+  grab.position.y = len / 2;
+  mergeGroup(lad);
+  lad.add(grab);
+  return { group: lad, track: g, min: 0.3, max: c.length - 0.3 };
 }
 
 /* ------------------------------------------------------------------ */

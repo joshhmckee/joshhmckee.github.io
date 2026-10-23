@@ -37,7 +37,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=VT323&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@600;700;900&family=EB+Garamond:ital,wght@1,400&family=UnifrakturMaguntia&family=VT323&display=swap">
   <link rel="stylesheet" href="assets/css/office.css">
   <link rel="modulepreload" href="assets/vendor/three.module.min.js">
 
@@ -63,6 +63,10 @@
   <div class="stage" id="stage" aria-hidden="true">
     <canvas id="scene"></canvas>
     <div class="markers" id="markers"></div>
+    <!-- with a mouse: where you're looking, in place of a cursor -->
+    <div class="reticle"></div>
+    <p class="act-hint" id="act-hint"><kbd>E</kbd><span></span></p>
+    <p class="look-hint">Click to look around</p>
   </div>
 
   <!-- Keyboard menu: invisible until someone tabs into it. -->
@@ -73,7 +77,14 @@
     <button type="button" data-go="podcasts">Podcasts</button>
     <button type="button" data-go="contact">Contact</button>
     <button type="button" data-go="about">About</button>
+    <button type="button" data-go="diploma">Degree</button>
+    <button type="button" data-go="window">Window</button>
+    <button type="button" data-go="outside">Outside</button>
   </nav>
+  <!-- A one-off tip once the door's open: how to walk out of it. -->
+  <p class="walk-hint" id="walk-hint" hidden></p>
+  <!-- Outside the office: the way back in. -->
+  <button type="button" class="go-in" data-action="back">Back inside <kbd>Esc</kbd></button>
   <p class="sr-only" id="announcer" aria-live="polite"></p>
 
   <div class="boot" id="boot" aria-hidden="true">
@@ -210,10 +221,36 @@
 
     <section class="panel panel-tapes podcasts" id="podcasts" data-panel="podcasts" aria-labelledby="podcasts-title">
       <button type="button" class="panel-close" data-action="back" aria-label="Close">&times;</button>
-      <p class="panel-kicker">Tape deck</p>
-      <h2 id="podcasts-title">Podcasts</h2>
-      <p class="panel-intro">The shows I keep in rotation.</p>
+      <p class="panel-kicker">Hi-fi</p>
+      <h2 id="podcasts-title">Tape deck</h2>
+      <p class="panel-intro">Put a mixtape in the deck, or pick up one of the shows I keep in rotation.</p>
+      <div class="shelf mixtapes" data-category="Mixtapes">
+        <h3>Mixtapes</h3>
+        <ul class="items">
+          <li class="item song" data-id="softcore" data-short="SOFTCORE" data-youtube="ggG9ySCChYw">
+            <h4 class="item-title"><a href="https://www.youtube.com/watch?v=ggG9ySCChYw" target="_blank" rel="noopener">Softcore</a></h4>
+            <p class="item-by">The Neighbourhood</p>
+          </li>
+          <li class="item song" data-id="sweater-weather" data-short="SWEATER WEATHER" data-youtube="GCdwKhTtNNw">
+            <h4 class="item-title"><a href="https://www.youtube.com/watch?v=GCdwKhTtNNw" target="_blank" rel="noopener">Sweater Weather</a></h4>
+            <p class="item-by">The Neighbourhood</p>
+          </li>
+          <li class="item song" data-id="do-i-wanna-know" data-short="DO I WANNA KNOW?" data-youtube="bpOSxM0rNPM">
+            <h4 class="item-title"><a href="https://www.youtube.com/watch?v=bpOSxM0rNPM" target="_blank" rel="noopener">Do I Wanna Know?</a></h4>
+            <p class="item-by">Arctic Monkeys</p>
+          </li>
+          <li class="item song" data-id="apocalypse" data-short="APOCALYPSE" data-youtube="sElE_BfQ67s">
+            <h4 class="item-title"><a href="https://www.youtube.com/watch?v=sElE_BfQ67s" target="_blank" rel="noopener">Apocalypse</a></h4>
+            <p class="item-by">Cigarettes After Sex</p>
+          </li>
+          <li class="item song" data-id="space-song" data-short="SPACE SONG" data-youtube="RBtlPT23PTM">
+            <h4 class="item-title"><a href="https://www.youtube.com/watch?v=RBtlPT23PTM" target="_blank" rel="noopener">Space Song</a></h4>
+            <p class="item-by">Beach House</p>
+          </li>
+        </ul>
+      </div>
       <div class="shelf" data-category="Podcasts">
+        <h3>Podcasts</h3>
         <ul class="items">
           <li class="item" data-id="investtalk" data-short="INVEST TALK">
             <h4 class="item-title"><a href="https://www.investtalk.com/" target="_blank" rel="noopener">Invest Talk</a></h4>
@@ -274,6 +311,13 @@
       <p class="paper-stamp" aria-hidden="true">NOT INVESTMENT ADVICE</p>
     </article>
   </div>
+
+  <!-- the tape that's in the deck: YouTube's player has to stay on screen while it plays -->
+  <aside class="jukebox" id="jukebox" aria-label="Now playing" hidden>
+    <p class="jukebox-label"><span class="jukebox-reels" aria-hidden="true"></span><span><b class="jukebox-title"></b><span class="jukebox-by"></span></span></p>
+    <div class="jukebox-screen"><div id="jukebox-player"></div></div>
+    <button type="button" class="jukebox-eject">Eject &#9167;</button>
+  </aside>
 
   <!-- If the 3D office can't load, the page quietly becomes the plain document. -->
   <script type="module" src="assets/js/main.js" onerror="document.documentElement.classList.remove('js')"></script>

@@ -105,6 +105,9 @@ void main() {
 
   col = aces(col * uExposure);
   col = pow(col, vec3(1.0 / 2.2));
+  // a warm, soft grade: honeyed highlights and shadows lifted toward amber rather than crushed
+  col *= vec3(1.035, 1.0, 0.92);
+  col += (1.0 - col) * (1.0 - col) * vec3(0.016, 0.009, 0.0);
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
   col = mix(vec3(lum), col, uSat);
   col += (1.0 - lum) * (1.0 - lum) * vec3(0.008, 0.0, 0.02); // a touch of violet in the shadows
@@ -123,7 +126,7 @@ void main() {
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
 
-/** Volumetric light through the blinds, ray-marched at half resolution. */
+/** Volumetric light through the window, ray-marched at half resolution. */
 const SHAFTS = /* glsl */ `
 uniform sampler2D tDepth;
 uniform mat4 uProjInv;
@@ -145,6 +148,8 @@ void main() {
   vec3 rd = pEnd - uCamPos;
   float L = min(length(rd), 9.0);
   rd = normalize(rd);
+  // the beam lives inside the room: a ray looking out of the window stops at the glass
+  if (rd.z < -1e-4) L = min(L, max(0.0, (uWinZ - uCamPos.z) / rd.z));
   float dt = L / float(STEPS);
   float start = bayer4(gl_FragCoord.xy) * dt;
   float acc = 0.0;
@@ -155,7 +160,7 @@ void main() {
   }
   acc *= dt;
   float mu = max(dot(rd, uSunDir), 0.0);
-  acc *= 0.3 + 1.4 * pow(mu, 5.0);
+  acc *= 0.3 + 0.8 * pow(mu, 5.0);
   gl_FragColor = vec4(acc, acc, acc, 1.0);
 }`;
 
@@ -202,6 +207,8 @@ void main() {
   gl_FragColor = vec4(c, 1.0);
 }`;
 
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
 export class RetroPipeline {
   constructor(renderer, scene, camera, { quality, shaft }) {
     this.renderer = renderer;
@@ -238,7 +245,7 @@ export class RetroPipeline {
     this.quadScene.add(this.quad);
 
     const fs = (fragmentShader, uniforms, defines) => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader, uniforms, defines: defines || {}, depthTest: false, depthWrite: false });
-    this.brightMat = fs(BRIGHT, { tScene: { value: this.rtScene.texture }, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 0.95 } });
+    this.brightMat = fs(BRIGHT, { tScene: { value: this.rtScene.texture }, uTexel: { value: new THREE.Vector2() }, uThreshold: { value: 1.3 } });
     this.blurMat = fs(BLUR, { tInput: { value: null }, uDir: { value: new THREE.Vector2() } });
     this.aoMat = fs(SSAO, {
       tDepth: { value: this.rtScene.depthTexture },
@@ -264,10 +271,10 @@ export class RetroPipeline {
       tAO: { value: this.rtAOA.texture },
       uRes: { value: new THREE.Vector2() },
       uSunColor: { value: new THREE.Color('#ffb36e') },
-      uShaft: { value: 0.55 },
+      uShaft: { value: 0.15 },
       uAO: { value: quality.ao ? 0.85 : 0 },
-      uExposure: { value: 1.35 },
-      uBloom: { value: 0.45 },
+      uExposure: { value: 1.2 },
+      uBloom: { value: 0.5 },
       uHover: { value: 0 },
       uOutlineW: { value: 1 },
       uOutline: { value: new THREE.Color('#fff1b8') },
@@ -279,12 +286,19 @@ export class RetroPipeline {
       uTexel: { value: new THREE.Vector2() },
       uVig: { value: 0.4 },
       uTime: { value: 0 },
-      uNoise: { value: 0.01 },
-      uAberr: { value: 0.35 },
+      uNoise: { value: 0.004 },
+      uAberr: { value: 0.08 },
     });
     this.maskMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    this.depthMat = new THREE.MeshBasicMaterial({ colorWrite: false });
     this.hover = [];
     this.hoverAmount = 0;
+    // the view outdoors: { scene, camera, nearLayer, portals: [{ corners: [Vector3 x4], open, near }] },
+    // seen through the openings in the room (portals) or, when `outside` is set, all round
+    this.outdoor = null;
+    this.outside = false;
+    renderer.autoClear = false; // passes clear explicitly so the outdoor pass and the room can share a target
+    this._ndc = new THREE.Vector3();
   }
 
   setSize(cssW, cssH, dpr) {
@@ -292,7 +306,8 @@ export class RetroPipeline {
     this.renderer.setSize(cssW, cssH, false);
     const buf = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     const devW = buf.x, devH = buf.y;
-    const scale = Math.max(1, Math.round(devH / this.quality.lowH));
+    // render at full device resolution unless the adaptive quality step has asked for less
+    const scale = Math.max(1, devH / this.quality.lowH);
     const lw = Math.ceil(devW / scale), lh = Math.ceil(devH / scale);
     this.low = new THREE.Vector2(lw, lh);
     this.rtScene.setSize(lw, lh);
@@ -328,6 +343,75 @@ export class RetroPipeline {
     this.renderer.render(this.quadScene, this.quadCam);
   }
 
+  /**
+   * Screen rectangle (in target pixels) covered by the openings you can see outdoors through (the
+   * window, and the door while it's open), or null if none is in view.
+   */
+  windowRect(w, h) {
+    const cam = this.camera;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const portal of this.outdoor.portals) {
+      if (!portal.open) continue;
+      for (const c of portal.corners) {
+        const p = this._ndc.copy(c).applyMatrix4(cam.matrixWorldInverse);
+        if (p.z > -0.05) return { x: 0, y: 0, w, h }; // a corner is behind us: draw everything
+        p.applyMatrix4(cam.projectionMatrix);
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
+        y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      }
+    }
+    if (x1 < -1 || x0 > 1 || y1 < -1 || y0 > 1) return null;
+    const px = (v, n) => clamp01((v + 1) / 2) * n;
+    const X0 = Math.floor(px(x0, w)) - 2, Y0 = Math.floor(px(y0, h)) - 2;
+    const X1 = Math.ceil(px(x1, w)) + 2, Y1 = Math.ceil(px(y1, h)) + 2;
+    return { x: Math.max(0, X0), y: Math.max(0, Y0), w: Math.min(w, X1) - Math.max(0, X0), h: Math.min(h, Y1) - Math.max(0, Y0) };
+  }
+
+  renderOutdoor(target) {
+    const r = this.renderer, cam = this.camera, o = this.outdoor;
+    const size = target ? new THREE.Vector2(target.width, target.height) : r.getDrawingBufferSize(new THREE.Vector2());
+    // outside, the outdoors is the whole picture
+    const rect = this.outside ? { x: 0, y: 0, w: size.x, h: size.y } : this.windowRect(size.x, size.y);
+    if (!rect || rect.w <= 0 || rect.h <= 0) return;
+    const oc = o.camera;
+    oc.matrixWorld.copy(cam.matrixWorld);
+    oc.matrixWorldInverse.copy(cam.matrixWorldInverse);
+    // close to the chalet's walls (outside, or through the open door) the near plane has to come in
+    const near = this.outside || o.portals.some((pt) => pt.open && pt.near) ? 0.1 : 1;
+    if (oc.fov !== cam.fov || oc.aspect !== cam.aspect || oc.near !== near) {
+      oc.fov = cam.fov;
+      oc.aspect = cam.aspect;
+      oc.near = near;
+      oc.updateProjectionMatrix();
+    }
+    if (target) {
+      target.scissor.set(rect.x, rect.y, rect.w, rect.h);
+      target.scissorTest = true;
+      r.setRenderTarget(target);
+    }
+    r.render(o.scene, oc);
+    if (target) {
+      target.scissorTest = false;
+      r.setRenderTarget(target);
+    }
+    r.clearDepth();
+  }
+
+  /**
+   * Outside, before the room is drawn: the chalet and whatever else stands close by go into the
+   * depth buffer, through the room's own camera, so the office is hidden behind its walls and shows
+   * only through the door and the window.
+   */
+  renderNearDepth() {
+    const o = this.outdoor, cam = this.camera;
+    const mask = cam.layers.mask;
+    o.scene.overrideMaterial = this.depthMat;
+    cam.layers.set(o.nearLayer);
+    this.renderer.render(o.scene, cam);
+    cam.layers.mask = mask;
+    o.scene.overrideMaterial = null;
+  }
+
   blur(src, tmp, k) {
     this.blurMat.uniforms.tInput.value = src.texture;
     this.blurMat.uniforms.uDir.value.set(k / this.halfSize.x, 0);
@@ -343,14 +427,23 @@ export class RetroPipeline {
     if (this.raw) {
       r.setRenderTarget(null);
       r.toneMapping = THREE.ACESFilmicToneMapping;
+      r.clear();
+      if (this.outdoor) this.renderOutdoor(null);
+      if (this.outside && this.outdoor) this.renderNearDepth();
       r.render(this.scene, cam);
       return;
     }
-    // 1. the scene
+    // 1. the outdoor view (only inside the openings' on-screen rectangle), then the room over it;
+    // outside, the room shows through its door and window, and its sunbeams sit those frames out
     r.setRenderTarget(this.rtScene);
     r.setClearColor(0x000000, 1);
     r.clear();
+    if (this.outdoor) this.renderOutdoor(this.rtScene);
+    if (this.outside && this.outdoor) this.renderNearDepth();
     r.render(this.scene, cam);
+    const u = this.compMat.uniforms;
+    const shaft = u.uShaft.value;
+    if (this.outside) u.uShaft.value = 0;
 
     // 2. hover mask
     this.hoverAmount += ((this.hover.length ? 1 : 0) - this.hoverAmount) * Math.min(1, dt * 12);
@@ -370,7 +463,6 @@ export class RetroPipeline {
     const res = this.low.y / 330; // keep glows the same size on screen at any resolution
 
     // 3. ambient occlusion
-    const u = this.compMat.uniforms;
     if (u.uAO.value > 0) {
       const au = this.aoMat.uniforms;
       au.uProjInv.value.copy(cam.projectionMatrixInverse);
@@ -398,6 +490,7 @@ export class RetroPipeline {
     // 6. composite, then present
     u.uHover.value = this.hoverAmount > 0.01 && this.hover.length ? this.hoverAmount * (0.78 + 0.22 * Math.sin(time * 6)) : 0;
     this.pass(this.compMat, this.rtLow);
+    u.uShaft.value = shaft;
     this.presentMat.uniforms.uTime.value = time;
     this.pass(this.presentMat, null);
   }

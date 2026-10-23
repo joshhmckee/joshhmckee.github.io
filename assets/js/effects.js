@@ -1,34 +1,28 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { ROOM, WIN, BLINDS, SUN_DIR } from './layout.js';
+import { ROOM, WIN, GLASS_Z, SUN_DIR } from './layout.js';
 import { rng } from './util.js';
 
-/** Shared GLSL: is a world point inside a sunbeam that made it through the blinds? */
+/** Shared GLSL: is a world point inside the sunbeam coming through the window? */
 export const SHAFT_GLSL = /* glsl */ `
 uniform vec3 uSunDir;
-uniform vec4 uWin;      // x0, x1, y0, y1 of the blinds opening
+uniform vec4 uWin;      // x0, x1, y0, y1 of the window glass
 uniform float uWinZ;
-uniform float uPitch;
-uniform float uOpen;    // fraction of each slat pitch that lets light through
 float shaftAt(vec3 p) {
   float t = (uWinZ - p.z) / uSunDir.z;
   if (t < 0.0) return 0.0;
   vec3 w = p + uSunDir * t;
-  float inside = step(uWin.x, w.x) * step(w.x, uWin.y) * step(uWin.z, w.y) * step(w.y, uWin.w);
-  float f = fract((uWin.w - w.y) / uPitch);
-  float d = abs(f - 0.5);
-  float edge = (1.0 - uOpen) * 0.5;
-  // beams are strongest close to the window and fade as they travel into the room
-  return inside * smoothstep(edge - 0.02, edge + 0.02, d) * exp(-t * 0.3);
+  // a soft-edged rectangle of light, strongest close to the window and fading as it travels into the room
+  float inside = smoothstep(uWin.x, uWin.x + 0.08, w.x) * (1.0 - smoothstep(uWin.y - 0.08, uWin.y, w.x))
+               * smoothstep(uWin.z, uWin.z + 0.08, w.y) * (1.0 - smoothstep(uWin.w - 0.08, uWin.w, w.y));
+  return inside * exp(-t * 0.3);
 }
 `;
 
 export function shaftUniforms() {
   return {
     uSunDir: { value: SUN_DIR.clone() },
-    uWin: { value: new THREE.Vector4(WIN.x0 + 0.07, WIN.x1 - 0.07, BLINDS.bottom, BLINDS.top) },
-    uWinZ: { value: BLINDS.z },
-    uPitch: { value: BLINDS.pitch },
-    uOpen: { value: 0.33 },
+    uWin: { value: new THREE.Vector4(WIN.x0 + 0.12, WIN.x1 - 0.12, WIN.y0 + 0.05, WIN.y1 - 0.12) },
+    uWinZ: { value: GLASS_Z },
   };
 }
 
@@ -45,7 +39,7 @@ export function buildEffects(ctx, shared) {
   while (i < N) {
     let p;
     if (i < N * 0.8) {
-      p = new THREE.Vector3(r.range(WIN.x0, WIN.x1), r.range(WIN.y0, WIN.y1), BLINDS.z + 0.05).addScaledVector(down, r.range(0.1, 7.5));
+      p = new THREE.Vector3(r.range(WIN.x0, WIN.x1), r.range(WIN.y0, WIN.y1), GLASS_Z + 0.1).addScaledVector(down, r.range(0.1, 7.5));
       p.x += r.range(-0.3, 0.3);
       p.y += r.range(-0.3, 0.3);
     } else {
@@ -82,7 +76,7 @@ export function buildEffects(ctx, shared) {
       void main() {
         float r = length(gl_PointCoord - 0.5) * 2.0;
         float a = smoothstep(1.0, 0.2, r);
-        gl_FragColor = vec4(uColor * (0.03 + vLit * 2.2) * a, 1.0);
+        gl_FragColor = vec4(uColor * (0.02 + vLit * 1.1) * a, 1.0);
       }`,
     transparent: true,
     depthWrite: false,

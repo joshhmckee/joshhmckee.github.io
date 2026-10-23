@@ -1,10 +1,10 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { ROOM, WIN, BLINDS, SUN_DIR } from './layout.js';
+import { ROOM, WIN, SUN_DIR } from './layout.js';
 import { std, basic, box, boxB, cyl, put, tiledBox, dynamic, rng, TAU } from './util.js';
 import * as T from './textures.js';
 
 /**
- * Room shell: floor, ceiling, walls, mouldings, the window with blinds and
+ * Room shell: floor, ceiling, walls, mouldings, the picture window and its
  * drapes, radiator, door, ceiling fan, and the scene lights.
  */
 export function buildRoom(ctx) {
@@ -107,67 +107,25 @@ export function buildRoom(ctx) {
   box(scene, 0.1, winH + 0.2, 0.03, mats.trim, [WIN.x1 + 0.05, WIN.y0 + winH / 2 + 0.05, z0 + 0.015]);
   box(scene, winW + 0.3, 0.12, 0.035, mats.trim, [0, WIN.y1 + 0.06, z0 + 0.017]);
 
-  // sash: painted cream, double-hung with muntins
+  // a single picture-window pane in a slim painted frame: nothing crossing the view
   mats.sash = std({ color: '#d8ccb0', roughness: 0.6 });
   const sz = z0 - wall * 0.62;
   const sx0 = WIN.x0 + 0.07, sx1 = WIN.x1 - 0.07, sy0 = WIN.y0, sy1 = WIN.y1 - 0.07;
   const sw = sx1 - sx0, sh = sy1 - sy0, mid = (sy0 + sy1) / 2;
   box(scene, sw, 0.05, 0.05, mats.sash, [0, sy0 + 0.025, sz]);
   box(scene, sw, 0.05, 0.05, mats.sash, [0, sy1 - 0.025, sz]);
-  box(scene, sw, 0.06, 0.07, mats.sash, [0, mid, sz]);
   box(scene, 0.05, sh, 0.05, mats.sash, [sx0 + 0.025, mid, sz]);
   box(scene, 0.05, sh, 0.05, mats.sash, [sx1 - 0.025, mid, sz]);
-  for (const fx of [-1 / 3, 0, 1 / 3]) box(scene, 0.022, sh, 0.03, mats.sash, [fx * sw, mid, sz]);
-  for (const fy of [0.25, 0.75]) box(scene, sw, 0.022, 0.03, mats.sash, [0, sy0 + sh * fy, sz]);
 
-  /* ---------------- outside: sky and skyline ---------------- */
-  const sky = new THREE.MeshBasicMaterial({ map: T.skyTex(), fog: false });
-  sky.color.setScalar(1.9);
-  const skyMesh = put(scene, new THREE.PlaneGeometry(14, 8), sky, [0.8, 2.2, z0 - 9.5], { cast: false, receive: false });
-  skyMesh.name = 'sky';
-  const far = new THREE.MeshBasicMaterial({ map: T.skylineTex(9, { color: '#5a2e5a', lit: 0.12, far: true }), transparent: true, alphaTest: 0.5, fog: false });
-  far.color.setScalar(1.15);
-  put(scene, new THREE.PlaneGeometry(12, 1.8), far, [0.6, 1.0, z0 - 8.2], { cast: false, receive: false });
-  const near = new THREE.MeshBasicMaterial({ map: T.skylineTex(4, { color: '#24122e', lit: 0.28 }), transparent: true, alphaTest: 0.5, fog: false });
-  near.color.setScalar(1.35);
-  put(scene, new THREE.PlaneGeometry(9, 2.4), near, [0.2, 0.45, z0 - 6.2], { cast: false, receive: false });
-  put(scene, new THREE.PlaneGeometry(9, 3), new THREE.MeshBasicMaterial({ color: '#160b1c' }), [0.2, -1.6, z0 - 6.19], { cast: false, receive: false });
-
-  /* ---------------- venetian blinds ---------------- */
-  const blinds = dynamic(new THREE.Group());
-  blinds.name = 'blinds';
-  scene.add(blinds);
-  mats.blinds = std({ color: '#e8dfc6', roughness: 0.45, metalness: 0.15 });
-  const count = Math.floor((BLINDS.top - BLINDS.bottom) / BLINDS.pitch);
-  const slatGeo = new THREE.BoxGeometry(BLINDS.width, BLINDS.thick, BLINDS.depth);
-  const slats = new THREE.InstancedMesh(slatGeo, mats.blinds, count);
-  slats.castShadow = true;
-  slats.receiveShadow = true;
-  slats.name = 'slats';
-  blinds.add(slats);
-  const dummy = new THREE.Object3D();
-  const setTilt = (tilt) => {
-    for (let i = 0; i < count; i++) {
-      dummy.position.set(0, BLINDS.top - (i + 0.5) * BLINDS.pitch, BLINDS.z);
-      dummy.rotation.set(-tilt, 0, 0);
-      dummy.updateMatrix();
-      slats.setMatrixAt(i, dummy.matrix);
-    }
-    slats.instanceMatrix.needsUpdate = true;
-    slats.computeBoundingSphere();
-  };
-  setTilt(BLINDS.tiltNormal);
-  box(blinds, BLINDS.width + 0.05, 0.05, 0.065, mats.blinds, [0, BLINDS.top + 0.025, BLINDS.z]);
-  box(blinds, BLINDS.width, 0.018, 0.045, mats.blinds, [0, BLINDS.bottom - 0.01, BLINDS.z]);
-  mats.cord = std({ color: '#d9cfb6', roughness: 0.9 });
-  for (const lx of [-0.85, 0, 0.85]) {
-    for (const s of [-1, 1]) box(blinds, 0.006, BLINDS.top - BLINDS.bottom, 0.002, mats.cord, [lx, (BLINDS.top + BLINDS.bottom) / 2, BLINDS.z + s * BLINDS.depth * 0.5], { cast: false });
-  }
-  const wand = cyl(blinds, 0.006, 0.006, 0.75, 6, std({ color: '#f1eadb', roughness: 0.3, transparent: true, opacity: 0.85 }), [BLINDS.width / 2 - 0.08, BLINDS.top - 0.4, BLINDS.z + 0.045], { cast: false });
-  wand.name = 'wand';
-  cyl(blinds, 0.0025, 0.0025, 1.0, 4, mats.cord, [-BLINDS.width / 2 + 0.07, BLINDS.top - 0.5, BLINDS.z + 0.04], { cast: false });
-  cyl(blinds, 0.012, 0.008, 0.045, 8, mats.cord, [-BLINDS.width / 2 + 0.07, BLINDS.top - 1.02, BLINDS.z + 0.04], { cast: false });
-  ctx.blinds = { group: blinds, slats, setTilt, tilt: BLINDS.tiltNormal };
+  /* ---------------- outside ---------------- */
+  // The mountain view is a separate scene (see outdoors.js), drawn first through the window opening.
+  // This invisible pane makes the window itself clickable.
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(WIN.x1 - WIN.x0, WIN.y1 - WIN.y0), new THREE.MeshBasicMaterial({ visible: false }));
+  pane.position.set(0, (WIN.y0 + WIN.y1) / 2, z0 - 0.06);
+  pane.name = 'windowPane';
+  dynamic(pane);
+  scene.add(pane);
+  ctx.windowPane = pane;
 
   /* ---------------- drapes ---------------- */
   mats.velvet = std({ color: '#5e1518', roughness: 0.85, side: THREE.DoubleSide });
@@ -203,29 +161,33 @@ export function buildRoom(ctx) {
   for (const s of [-1, 1]) boxB(rad, 0.05, 0.08, 0.13, mats.iron, [s * 0.68, 0, z0 + 0.16]);
   cyl(rad, 0.02, 0.02, 0.1, 8, mats.brass, [0.8, 0.2, z0 + 0.16]);
 
-  /* ---------------- door (right wall) ---------------- */
+  /* ---------------- door (right wall): it leads outside, and swings open as you walk up to it ---------------- */
   const dz = (door.z0 + door.z1) / 2, dw = door.z1 - door.z0;
   mats.doorWood = std({ map: T.woodTex({ light: '#5a2e1a', dark: '#2a1208', seed: 21 }), roughness: 0.55 });
   const dx = x1 - 0.04;
-  box(scene, 0.05, 1.05, dw, mats.panel, [dx, 0.525, dz]);
-  box(scene, 0.05, 0.16, dw, mats.doorWood, [dx, 1.13, dz]);
-  box(scene, 0.05, 0.12, dw, mats.doorWood, [dx, door.h - 0.06, dz]);
-  box(scene, 0.05, door.h - 1.21 - 0.12, 0.12, mats.doorWood, [dx, 1.21 + (door.h - 1.33) / 2, door.z0 + 0.06]);
-  box(scene, 0.05, door.h - 1.21 - 0.12, 0.12, mats.doorWood, [dx, 1.21 + (door.h - 1.33) / 2, door.z1 - 0.06]);
+  // the leaf hangs from hinges on the far side from the knob and swings into the room
+  const leaf = dynamic(new THREE.Group());
+  leaf.position.set(dx, 0, door.z1);
+  leaf.name = 'door';
+  scene.add(leaf);
+  box(leaf, 0.05, 1.05, dw, mats.panel, [0, 0.525, -dw / 2]);
+  box(leaf, 0.05, 0.16, dw, mats.doorWood, [0, 1.13, -dw / 2]);
+  box(leaf, 0.05, 0.12, dw, mats.doorWood, [0, door.h - 0.06, -dw / 2]);
+  box(leaf, 0.05, door.h - 1.21 - 0.12, 0.12, mats.doorWood, [0, 1.21 + (door.h - 1.33) / 2, -dw + 0.06]);
+  box(leaf, 0.05, door.h - 1.21 - 0.12, 0.12, mats.doorWood, [0, 1.21 + (door.h - 1.33) / 2, -0.06]);
   const glassMat = std({ map: T.doorGlassTex(), emissive: '#ffe2b0', emissiveIntensity: 0.55, roughness: 0.3 });
   glassMat.emissiveMap = glassMat.map;
-  const glass = box(scene, 0.012, door.h - 1.33, dw - 0.24, glassMat, [dx, 1.21 + (door.h - 1.33) / 2, dz], { cast: false });
+  const glass = box(leaf, 0.012, door.h - 1.33, dw - 0.24, glassMat, [0, 1.21 + (door.h - 1.33) / 2, -dw / 2], { cast: false });
   glass.name = 'doorGlass';
-  dynamic(glass);
+  put(leaf, new THREE.SphereGeometry(0.03, 10, 8), mats.brass, [-0.06, 1.0, -dw + 0.1]);
+  box(leaf, 0.008, 0.16, 0.05, mats.brass, [-0.028, 1.0, -dw + 0.1]);
   // casing
   box(scene, 0.03, door.h + 0.1, 0.1, mats.trim, [x1 - 0.015, (door.h + 0.1) / 2, door.z0 - 0.05]);
   box(scene, 0.03, door.h + 0.1, 0.1, mats.trim, [x1 - 0.015, (door.h + 0.1) / 2, door.z1 + 0.05]);
   box(scene, 0.035, 0.12, dw + 0.24, mats.trim, [x1 - 0.017, door.h + 0.08, dz]);
-  // knob
-  put(scene, new THREE.SphereGeometry(0.03, 10, 8), mats.brass, [x1 - 0.1, 1.0, door.z0 + 0.1]);
-  box(scene, 0.008, 0.16, 0.05, mats.brass, [x1 - 0.068, 1.0, door.z0 + 0.1]);
   ctx.anchors.door = new THREE.Vector3(x1 - 0.05, 1.5, dz);
-  ctx.door = { glass };
+  /** angle: 0 shut, ~1.4 wide open (radians, into the room). */
+  ctx.door = { glass, leaf, angle: 0, x: x1, z0: door.z0, z1: door.z1, h: door.h, setAngle: (a) => (leaf.rotation.y = a) };
 
   /* ---------------- ceiling fan ---------------- */
   const fan = dynamic(new THREE.Group());
@@ -247,12 +209,16 @@ export function buildRoom(ctx) {
     box(arm, 0.16, 0.012, 0.03, mats.darkBrass, [0.17, 0, 0], { cast: false });
     box(arm, 0.56, 0.008, 0.13, blade, [0.5, -0.004, 0], { r: [0.12, 0, 0], cast: false });
   }
-  const bowl = std({ color: '#efe3c4', roughness: 0.3, emissive: '#ffcf8a', emissiveIntensity: 0.0, transparent: true, opacity: 0.92 });
+  // the frosted bowl is lit: a soft warm glow over the whole room
+  const bowl = std({ color: '#efe3c4', roughness: 0.3, emissive: '#ffcf8a', emissiveIntensity: 1.0, transparent: true, opacity: 0.92 });
   put(fan, new THREE.SphereGeometry(0.11, 14, 8, 0, TAU, Math.PI / 2, Math.PI / 2), bowl, [0, -0.5, 0], { cast: false });
+  const fanLight = new THREE.PointLight('#ffcb86', 1.7, 7.5, 1.3);
+  fanLight.position.set(0, -0.62, 0);
+  fan.add(fanLight);
   ctx.fan = { rotor, bowl };
 
   /* ---------------- lights ---------------- */
-  const sun = new THREE.DirectionalLight('#ffb070', 6.0);
+  const sun = new THREE.DirectionalLight('#ffbd78', 3.8);
   const target = new THREE.Object3D();
   target.position.set(0.6, 0.6, -0.4);
   scene.add(target);
@@ -266,18 +232,11 @@ export function buildRoom(ctx) {
   sun.shadow.normalBias = 0.015;
   scene.add(sun);
 
-  const hemi = new THREE.HemisphereLight('#7a7aa8', '#3a1f14', 0.45);
+  // warm ambient: lamplight bouncing off wood and plaster rather than a cool sky
+  const hemi = new THREE.HemisphereLight('#ffdcb0', '#3e2416', 0.42);
   scene.add(hemi);
-  const windowGlow = new THREE.PointLight('#ff8f6a', 3.0, 6.5, 1.3);
-  windowGlow.position.set(0, 1.85, z0 + 0.6);
-  scene.add(windowGlow);
-  const bounce = new THREE.PointLight('#ffc08a', 1.6, 7, 1.2);
-  bounce.position.set(-0.6, 1.1, 0.8);
-  scene.add(bounce);
-  const leftFill = new THREE.PointLight('#ffb57a', 1.0, 5, 1.4);
-  leftFill.position.set(-2.0, 2.3, -1.2);
-  scene.add(leftFill);
-  ctx.lights = { sun, hemi, windowGlow, bounce, leftFill };
+  // the rest of the light comes from the lamps themselves and the baked environment's soft bounce
+  ctx.lights = { sun, hemi, fan: fanLight };
 
   void rng;
   void basic;

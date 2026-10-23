@@ -1,116 +1,112 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { std, put, cyl, dynamic, rng, TAU, lerp, clamp } from './util.js';
+import { std, retro, put, cyl, dynamic, rng, TAU, lerp, clamp, smooth } from './util.js';
 import * as T from './textures.js';
 
 /* ==================================================================
-   A long-haired dapple dachshund who lives in the office.
+   A long-haired chocolate-and-tan dachshund who lives in the office.
    Built facing +z, standing on y = 0. Units are metres.
+
+   Body, neck and tail are one closed skin bent by a chain of spine
+   bones, so he can bend into turns and curl up nose-to-tail in his bed.
+   The long coat is layered over that solid body as tapering ribbons of
+   real geometry (no cut-out cards), so he is solid from every side.
    ================================================================== */
 
-const COAT = '#5a321d';   // chocolate
-const COAT2 = '#6b3d22';  // warmer chocolate in the long feathering
-const SPOT = '#b8a690';   // silver dapple
-const TAN = '#7a4a2a';    // tan points
+const COAT = '#45271a';   // chocolate
+const COAT2 = '#52301f';  // warmer chocolate in the long feathering
+const DARK = '#28160d';   // the deeper shade along the back and at the roots
+const TIP = '#6a3f27';    // sun-warmed tips of the long hair
+const TAN = '#875331';    // tan points: brows, cheeks, muzzle, forechest, feet
+
+const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1), DOWN = new THREE.Vector3(0, -1, 0);
 
 /* ---------------- textures ---------------- */
 
-/** Short body coat: chocolate with soft silver dapple patches and fine hair-direction strokes. */
+/** Short coat: a light grey detail map (the colour comes from the vertices) with fine hairs lying along v. */
 function coatTex(seed = 3) {
-  const W = 128, H = 64;
+  const W = 128, H = 128;
   const [c, g] = T.makeCanvas(W, H);
   const r = rng(seed);
-  g.fillStyle = COAT;
+  g.fillStyle = '#dadada';
   g.fillRect(0, 0, W, H);
-  const blot = (cx, cy, rad, a) => {
-    for (const off of [-W, 0, W]) {
-      const grd = g.createRadialGradient(cx + off, cy, 0, cx + off, cy, rad);
-      grd.addColorStop(0, `rgba(176,156,132,${a})`);
-      grd.addColorStop(0.55, `rgba(160,140,118,${a * 0.75})`);
-      grd.addColorStop(1, 'rgba(160,140,118,0)');
-      g.fillStyle = grd;
-      g.beginPath();
-      g.ellipse(cx + off, cy, rad * r.range(1.1, 1.8), rad, r() * 3, 0, TAU);
-      g.fill();
+  // soft drifts where the coat clumps and parts
+  for (let i = 0; i < 46; i++) {
+    const x = r() * W, y = r() * H, rw = r.range(3, 9), rh = r.range(10, 26), rot = r.range(-0.2, 0.2), a = r.range(0.05, 0.14);
+    g.fillStyle = r.chance(0.5) ? `rgba(255,255,255,${a})` : `rgba(30,30,30,${a})`;
+    for (const ox of [-W, 0, W]) {
+      for (const oy of [-H, 0, H]) {
+        g.beginPath();
+        g.ellipse(x + ox, y + oy, rw, rh, rot, 0, TAU);
+        g.fill();
+      }
     }
-  };
-  // dapple: irregular merged patches of silver, plus scattered flecks
-  for (let i = 0; i < 13; i++) {
-    const cx = r() * W, cy = r() * H;
-    for (let j = 0; j < r.int(2, 5); j++) blot(cx + r.range(-6, 6), cy + r.range(-3, 3), r.range(2.5, 6.5), r.range(0.55, 0.85));
   }
-  for (let i = 0; i < 30; i++) blot(r() * W, r() * H, r.range(0.8, 1.6), 0.6);
-  for (let i = 0; i < 900; i++) {
-    const x = r() * W, y = r() * H;
-    g.strokeStyle = r.chance(0.5) ? 'rgba(20,10,4,0.28)' : 'rgba(150,100,60,0.18)';
-    g.lineWidth = 0.4;
+  // fine hairs following the lay of the coat
+  g.lineCap = 'round';
+  for (let i = 0; i < 1600; i++) {
+    const x = r() * W, y = r() * H, len = r.range(3, 7), bend = r.range(-0.8, 0.8);
+    g.strokeStyle = r.chance(0.55) ? `rgba(30,24,20,${r.range(0.15, 0.35)})` : `rgba(255,255,255,${r.range(0.15, 0.4)})`;
+    g.lineWidth = r.range(0.35, 0.7);
     g.beginPath();
     g.moveTo(x, y);
-    g.quadraticCurveTo(x + r.range(-0.6, 0.6), y + 1.5, x + r.range(-0.8, 0.8), y + r.range(2.5, 4.5));
+    g.quadraticCurveTo(x + bend, y + len * 0.5, x + bend * 0.4, y + len);
     g.stroke();
   }
   return T.toTexture(c, { wrap: true });
 }
 
-/** Head: loft UVs run around (u) and back-to-nose (v); tan sits low on the muzzle and cheeks. */
-function headTex(seed = 4) {
-  const W = 128, H = 64;
-  const [c, g] = T.makeCanvas(W, H);
-  const r = rng(seed);
-  g.fillStyle = COAT;
-  g.fillRect(0, 0, W, H);
-  for (let i = 0; i < 7; i++) {
-    const cx = r() * W, cy = H * r.range(0.3, 1), rad = r.range(2, 5);
-    const gg = g.createRadialGradient(cx, cy, 0, cx, cy, rad);
-    gg.addColorStop(0, 'rgba(176,156,132,0.8)');
-    gg.addColorStop(1, 'rgba(176,156,132,0)');
-    g.fillStyle = gg;
-    g.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
-  }
-  // u from 0.55 to 0.95 is the underside of the ring; v near 1 (canvas top) is the nose end
-  const tanGrad = g.createLinearGradient(0, H, 0, 0);
-  tanGrad.addColorStop(0, 'rgba(143,90,50,0)');
-  tanGrad.addColorStop(0.45, 'rgba(126,78,42,0)');
-  tanGrad.addColorStop(0.65, 'rgba(126,78,42,0.85)');
-  tanGrad.addColorStop(1, 'rgba(126,78,42,0.9)');
-  g.fillStyle = tanGrad;
-  g.beginPath();
-  g.moveTo(W * 0.6, 0);
-  g.lineTo(W * 0.9, 0);
-  g.lineTo(W * 0.85, H);
-  g.lineTo(W * 0.65, H);
-  g.closePath();
-  g.fill();
-  return T.toTexture(c, { wrap: true });
-}
-
-/** Long silky hair: wavy strands on transparent, dense at the root, thinning to fine tips. */
-function strandTex(palette, seed = 5) {
+/** Long silky hair: a grey map of fine wavy strands running the length of each lock (v), with glossy highlights. */
+function strandTex(seed = 5) {
   const W = 64, H = 128;
   const [c, g] = T.makeCanvas(W, H);
   const r = rng(seed);
-  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#969696';
+  g.fillRect(0, 0, W, H);
   g.lineCap = 'round';
-  // strands start at ragged points near the root, wave as they fall, and taper to fine tips
-  for (let i = 0; i < 300; i++) {
-    const x = r() * W;
-    const y0 = Math.pow(r(), 1.6) * 38; // roots spread out over the top third
-    const len = H * r.range(0.4, 0.98);
-    const phase = r() * TAU, amp = r.range(1.5, 4.0), freq = r.range(0.035, 0.07);
-    g.strokeStyle = r.chance(0.05) ? SPOT : r.pick(palette);
-    const w0 = r.range(0.7, 1.5);
-    let px = x, py = y0;
-    for (let y = y0 + 3; y <= Math.max(len, y0 + 30); y += 3) {
-      const nx = x + Math.sin(y * freq + phase) * amp * (y / H);
-      const f = (y - y0) / Math.max(1, Math.max(len, y0 + 30) - y0);
-      g.lineWidth = w0 * Math.min(1, f * 5) * (1 - f * 0.8); // thin at the root, full, then tapering
+  for (let i = 0; i < 240; i++) {
+    const x0 = r() * W, amp = r.range(0.5, 2.2), freq = r.range(0.04, 0.09), ph = r() * TAU, v = r();
+    g.strokeStyle = v < 0.35 ? `rgba(45,45,45,${r.range(0.3, 0.6)})` : v < 0.8 ? `rgba(215,215,215,${r.range(0.4, 0.8)})` : `rgba(255,255,255,${r.range(0.5, 0.9)})`;
+    g.lineWidth = r.range(0.4, 1.1);
+    for (const ox of [-W, 0, W]) {
       g.beginPath();
-      g.moveTo(px, py);
-      g.lineTo(nx, y);
+      for (let y = 0; y <= H; y += 4) {
+        const x = x0 + ox + Math.sin(y * freq + ph) * amp;
+        if (y) g.lineTo(x, y);
+        else g.moveTo(x, y);
+      }
       g.stroke();
-      px = nx;
-      py = y;
     }
   }
+  return T.toTexture(c, { wrap: true });
+}
+
+/** Nose leather for a sphere whose front sits at u = 0.25: pebbled, with two curved nostrils and a philtrum. */
+function noseTex() {
+  const W = 64, H = 32;
+  const [c, g] = T.makeCanvas(W, H);
+  const r = rng(8);
+  g.fillStyle = '#3a2a23';
+  g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 300; i++) {
+    g.fillStyle = r.chance(0.5) ? 'rgba(0,0,0,0.35)' : 'rgba(130,100,90,0.16)';
+    g.fillRect(r() * W, r() * H, 0.8, 0.8);
+  }
+  g.fillStyle = '#040202';
+  g.strokeStyle = '#060403';
+  g.lineWidth = 0.7;
+  for (const s of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(16 + s * 3.8, 17.4, 2.1, 1.3, s * 0.45, 0, TAU);
+    g.fill();
+    g.beginPath(); // the slit curling out and down from each nostril
+    g.moveTo(16 + s * 5.4, 18);
+    g.quadraticCurveTo(16 + s * 6.6, 19.8, 16 + s * 6, 21.5);
+    g.stroke();
+  }
+  g.beginPath();
+  g.moveTo(16, 19.5);
+  g.lineTo(16, 32);
+  g.stroke();
   return T.toTexture(c);
 }
 
@@ -166,66 +162,318 @@ function blobTex() {
 const cat = (a, b, c, d, t) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
 
 /**
- * Loft a smooth tube through stations { p:[x,y,z], w, h, drop } (half width, half height;
- * drop deepens the underside). Rings stay square to the spine.
+ * Loft a closed solid through stations { p:[x,y,z], w, t, b, k, sq }: half width, height above and
+ * depth below the spine (t defaults to w, b to t), keel (narrows the underside, for a deep chest)
+ * and squareness (2 = ellipse). Rings stay square to the spine and are spaced evenly along it; faces
+ * wind outward and each closed end gets a dome. `side` is the direction the width spans;
+ * tint(colour, { a, u, p }) paints vertex colours. Each vertex also carries `su`, its place along
+ * the spine (0..1), for skinning. userData: at(u, a) -> { p, n, tan }, frame(u), uz(z).
  */
-function loft(stations, { radial = 22, rings = 48, uv = [1, 3] } = {}) {
+function loft(stations, { radial = 24, rings = 48, uv = [1, 1], side = X, caps = [true, true], capRings = 4, tint = null } = {}) {
   const curve = new THREE.CatmullRomCurve3(stations.map((s) => new THREE.Vector3(...s.p)), false, 'centripetal');
   const n = stations.length;
-  const get = (k, key) => stations[clamp(k, 0, n - 1)][key] ?? 0;
-  const pos = [], uvs = [], idx = [];
-  const side = new THREE.Vector3(1, 0, 0), up = new THREE.Vector3(), tan = new THREE.Vector3(), c = new THREE.Vector3();
-  for (let i = 0; i <= rings; i++) {
-    const t = i / rings;
-    curve.getPoint(t, c);
-    curve.getTangent(t, tan);
-    up.crossVectors(tan, side).normalize();
+  const val = (k, key) => {
+    const s = stations[clamp(k, 0, n - 1)];
+    if (key === 't') return s.t ?? s.w;
+    if (key === 'b') return s.b ?? s.t ?? s.w;
+    if (key === 'sq') return s.sq ?? 2;
+    return s[key] ?? 0;
+  };
+  const param = (t, key) => {
     const f = t * (n - 1), k = Math.min(n - 2, Math.floor(f)), a = f - k;
-    const w = Math.max(0.0005, cat(get(k - 1, 'w'), get(k, 'w'), get(k + 1, 'w'), get(k + 2, 'w'), a));
-    const h = Math.max(0.0005, cat(get(k - 1, 'h'), get(k, 'h'), get(k + 1, 'h'), get(k + 2, 'h'), a));
-    const drop = cat(get(k - 1, 'drop'), get(k, 'drop'), get(k + 1, 'drop'), get(k + 2, 'drop'), a);
+    return cat(val(k - 1, key), val(k, key), val(k + 1, key), val(k + 2, key), a);
+  };
+  const C = new THREE.Vector3(), Tg = new THREE.Vector3(), S = new THREE.Vector3(), U = new THREE.Vector3();
+  const sec = { w: 0, t: 0, b: 0, k: 0, sq: 2 };
+  const frame = (u) => {
+    const t = curve.getUtoTmapping(clamp(u, 0, 1));
+    curve.getPoint(t, C);
+    curve.getTangent(t, Tg);
+    S.copy(side).addScaledVector(Tg, -side.dot(Tg)).normalize();
+    U.crossVectors(Tg, S);
+    sec.w = Math.max(1e-4, param(t, 'w'));
+    sec.t = Math.max(1e-4, param(t, 't'));
+    sec.b = Math.max(1e-4, param(t, 'b'));
+    sec.k = param(t, 'k');
+    sec.sq = Math.max(1.2, param(t, 'sq'));
+    return sec;
+  };
+  // the cross-section at angle a (0 = +side, PI/2 = top): offsets along S and U, then a rough outward normal
+  const shape = (a, f, out) => {
+    let c = Math.cos(a), s = Math.sin(a);
+    if (Math.abs(f.sq - 2) > 1e-3) {
+      c = Math.sign(c) * Math.abs(c) ** (2 / f.sq);
+      s = Math.sign(s) * Math.abs(s) ** (2 / f.sq);
+    }
+    const h = s >= 0 ? f.t : f.b;
+    out[0] = f.w * c * (1 - f.k * Math.max(0, -s) ** 1.5 * 0.6);
+    out[1] = h * s;
+    out[2] = c / f.w;
+    out[3] = s / h;
+    return out;
+  };
+
+  // rings: a dome of shrinking rings closes each capped end
+  const list = [];
+  const dome = (u, sign) => {
+    const out = [];
+    for (let m = 1; m <= capRings; m++) {
+      const ph = (m / capRings) * (Math.PI / 2);
+      out.push({ u, sc: m === capRings ? 0 : Math.cos(ph), off: sign * Math.sin(ph) });
+    }
+    return out;
+  };
+  if (caps[0]) list.push(...dome(0, -1).reverse());
+  for (let i = 0; i <= rings; i++) list.push({ u: i / rings, sc: 1, off: 0 });
+  if (caps[1]) list.push(...dome(1, 1));
+
+  const len = curve.getLength();
+  const pos = [], uvs = [], col = [], su = [], idx = [];
+  const tmp = [0, 0, 0, 0], P = new THREE.Vector3(), colr = new THREE.Color();
+  for (const rg of list) {
+    const f = frame(rg.u);
+    const d = ((f.w + f.t + f.b) / 3) * rg.off;
     for (let j = 0; j <= radial; j++) {
-      const ang = (j / radial) * TAU;
-      const cx = Math.cos(ang), sy = Math.sin(ang);
-      const yy = sy < 0 ? sy * (1 + drop * -sy) : sy;
-      pos.push(c.x + side.x * w * cx + up.x * h * yy, c.y + side.y * w * cx + up.y * h * yy, c.z + side.z * w * cx + up.z * h * yy);
-      uvs.push((j / radial) * uv[0], t * uv[1]);
+      const a = (j / radial) * TAU;
+      shape(a, f, tmp);
+      P.copy(C).addScaledVector(Tg, d).addScaledVector(S, tmp[0] * rg.sc).addScaledVector(U, tmp[1] * rg.sc);
+      pos.push(P.x, P.y, P.z);
+      uvs.push((j / radial) * uv[0], (rg.u + d / len) * uv[1]);
+      su.push(rg.u);
+      if (tint) {
+        tint(colr, { a, u: rg.u, p: P });
+        col.push(colr.r, colr.g, colr.b);
+      }
     }
   }
-  for (let i = 0; i < rings; i++) {
+  const R = radial + 1;
+  for (let i = 0; i < list.length - 1; i++) {
     for (let j = 0; j < radial; j++) {
-      const a = i * (radial + 1) + j, b = a + radial + 1;
-      idx.push(a, b, a + 1, b, b + 1, a + 1);
+      const a = i * R + j, b = a + R;
+      idx.push(a, a + 1, b, a + 1, b + 1, b); // around the ring x along the spine = outward
     }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  if (tint) g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('su', new THREE.Float32BufferAttribute(su, 1));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  // weld normals across the seam, and point each pole straight out along the spine
+  const no = g.attributes.normal, v = new THREE.Vector3();
+  list.forEach((rg, i) => {
+    if (rg.sc === 0) {
+      frame(rg.u);
+      for (let j = 0; j <= radial; j++) no.setXYZ(i * R + j, Tg.x * Math.sign(rg.off), Tg.y * Math.sign(rg.off), Tg.z * Math.sign(rg.off));
+      return;
+    }
+    v.set(no.getX(i * R) + no.getX(i * R + radial), no.getY(i * R) + no.getY(i * R + radial), no.getZ(i * R) + no.getZ(i * R + radial)).normalize();
+    no.setXYZ(i * R, v.x, v.y, v.z);
+    no.setXYZ(i * R + radial, v.x, v.y, v.z);
+  });
+
+  const zs = [];
+  for (let i = 0; i <= 400; i++) zs.push(curve.getPointAt(i / 400).z);
+  g.userData = {
+    at(u, a) {
+      const f = frame(u);
+      shape(a, f, tmp);
+      const p = C.clone().addScaledVector(S, tmp[0]).addScaledVector(U, tmp[1]);
+      return { p, n: S.clone().multiplyScalar(tmp[2]).addScaledVector(U, tmp[3]).normalize(), tan: Tg.clone() };
+    },
+    frame(u) {
+      const f = frame(u);
+      return { ...f, c: C.clone(), tan: Tg.clone(), side: S.clone(), up: U.clone() };
+    },
+    /** u at the point of the spine nearest the given z. */
+    uz(z) {
+      let best = 0;
+      zs.forEach((q, i) => { if (Math.abs(q - z) < Math.abs(zs[best] - z)) best = i; });
+      return best / 400;
+    },
+  };
+  return g;
+}
+
+/** Merge geometries that carry the same attributes into one. */
+function merge(geos) {
+  const out = new THREE.BufferGeometry();
+  for (const name of Object.keys(geos[0].attributes)) {
+    const arr = new Float32Array(geos.reduce((s, g) => s + g.attributes[name].array.length, 0));
+    let off = 0;
+    for (const g of geos) {
+      arr.set(g.attributes[name].array, off);
+      off += g.attributes[name].array.length;
+    }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, geos[0].attributes[name].itemSize));
+  }
+  const idx = [];
+  let base = 0;
+  for (const g of geos) {
+    for (const i of g.index.array) idx.push(i + base);
+    base += g.attributes.position.count;
+  }
+  out.setIndex(idx);
+  return out;
+}
+
+/** Give a plain geometry vertex colours, fn(colour, position), so it can share the coat material. */
+function paint(geo, fn) {
+  const p = geo.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color(), v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    fn(c, v.fromBufferAttribute(p, i));
+    col[i * 3] = c.r;
+    col[i * 3 + 1] = c.g;
+    col[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
+}
+
+/** Skin weights from each vertex's place along the spine, shared linearly between the two nearest bones. */
+function skin(geo, boneU) {
+  const su = geo.attributes.su.array, si = new Uint16Array(su.length * 4), sw = new Float32Array(su.length * 4);
+  for (let i = 0; i < su.length; i++) {
+    let k = 0;
+    while (k < boneU.length - 2 && su[i] > boneU[k + 1]) k++;
+    const f = clamp((su[i] - boneU[k]) / (boneU[k + 1] - boneU[k]), 0, 1);
+    si[i * 4] = k;
+    si[i * 4 + 1] = k + 1;
+    sw[i * 4] = 1 - f;
+    sw[i * 4 + 1] = f;
+  }
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+  geo.deleteAttribute('su');
+  return geo;
+}
+
+/** Three more points for a lock leaving the skin at q (normal n): it falls under gravity in a soft S, flaring out. */
+function fallFrom(pts, q, n, len, across, r, flare, wave) {
+  const dir = new THREE.Vector3();
+  q = q.clone();
+  for (let i = 1; i <= 3; i++) {
+    dir.copy(DOWN).addScaledVector(n, flare * (0.3 + i * 0.25)).normalize();
+    q.addScaledVector(dir, len / 3).addScaledVector(across, wave * (i % 2 ? 1 : -1) * r.range(0.4, 1.2));
+    pts.push(q.clone());
+  }
+  return pts;
+}
+
+/** A lock rooted at p on skin with outward normal n: it runs a little way along the surface, then falls. */
+function fall(p, n, len, across, r, { flare = 0.3, wave = 0.005, lie = 0.2 } = {}) {
+  const d = DOWN.clone().addScaledVector(n, -DOWN.dot(n));
+  if (d.lengthSq() < 0.02) d.copy(DOWN);
+  d.normalize();
+  const q = p.clone().addScaledVector(n, 0.002);
+  const pts = [p.clone().addScaledVector(n, -0.004), q.clone()];
+  q.addScaledVector(d, len * lie);
+  pts.push(q.clone());
+  return fallFrom(pts, q, n, len * (1 - lie), across, r, flare, wave);
+}
+
+/**
+ * A lock that lies over a lofted surface along path [[u, a], ...] (gap above the skin, so it never
+ * touches it), then falls free for `len`. This is how the coat parts along the spine and drapes the flanks.
+ */
+function drape(surf, path, gap, len, across, r, { flare = 0.25, wave = 0.005 } = {}) {
+  const root = surf.at(...path[0]);
+  const pts = [root.p.clone().addScaledVector(root.n, -0.003)];
+  let s;
+  path.forEach(([u, a], i) => {
+    s = surf.at(u, a);
+    pts.push(s.p.addScaledVector(s.n, gap * (0.35 + (0.65 * i) / (path.length - 1))));
+  });
+  return fallFrom(pts, pts[pts.length - 1], s.n, len, across, r, flare, wave);
+}
+
+/**
+ * A curtain of long hair: columns path(f, hem) -> [Vector3, ...] from root to tip (f = 0..1 across;
+ * hem scales how far each column falls; su(f, v) places it along the spine) joined into one closed
+ * slab. It is thickest mid-lock and thins to nothing at the root, the edges and the tips; the hem is
+ * cut into pointed locks (about `lock` columns wide) of uneven width and length, each lock rounded (bulging toward `out`) so the light picks
+ * out the clumps, and the free hair waves gently along `waveDir`.
+ */
+function curtain(path, { cols = 28, rows = 12, lock = 4, jag = 0.4, thick = 0.003, ripple = 0.002, fade = 0.1, out = null, waveDir = null, wave = 0, repeat = 6, su = () => 0, r, colours }) {
+  // split the columns into locks of uneven width; at(j) -> [lock, next lock, place across the lock]
+  const starts = [0];
+  while (starts[starts.length - 1] <= cols) starts.push(starts[starts.length - 1] + Math.max(2, Math.round(lock * r.range(0.6, 1.5))));
+  const locks = starts.map(() => ({ len: r.range(0.82, 1.12), jag: jag * r.range(0.6, 1.25), rip: r.range(0.2, 1.3), tint: colours(), ph: r() * TAU }));
+  const at = (j) => {
+    let k = 0;
+    while (starts[k + 1] <= j) k++;
+    return [locks[k], locks[k + 1], (j - starts[k]) / (starts[k + 1] - starts[k])];
+  };
+  const C = [];
+  for (let j = 0; j <= cols; j++) {
+    const f = j / cols, [A, B, q] = at(j);
+    const tooth = 1 - lerp(A.jag, B.jag, q) * Math.abs(2 * q - 1) ** 1.3;
+    const cv = new THREE.CatmullRomCurve3(path(f, tooth * lerp(A.len, B.len, smooth(q))), false, 'centripetal');
+    C.push(Array.from({ length: rows + 1 }, (_, i) => {
+      const p = cv.getPointAt(i / rows);
+      if (wave) p.addScaledVector(waveDir, Math.sin(f * 23 + (i / rows) * 7 + A.ph * 0.3) * wave * smooth(i / rows));
+      return p;
+    }));
+  }
+  // the sheet's normal (across x down), turned to face `out`
+  const N = C.map((col, j) => col.map((p, i) => {
+    const a = C[Math.min(cols, j + 1)][i].clone().sub(C[Math.max(0, j - 1)][i]);
+    const b = col[Math.min(rows, i + 1)].clone().sub(col[Math.max(0, i - 1)]);
+    return a.cross(b).normalize();
+  }));
+  const flip = !!out && N[cols >> 1][rows >> 1].dot(out) < 0;
+  const pos = [], uvs = [], col = [], sus = [], idx = [], c = new THREE.Color(), c1 = new THREE.Color(), R = rows + 1;
+  for (const sgn of [1, -1]) {
+    for (let j = 0; j <= cols; j++) {
+      const f = j / cols, [A, B, q] = at(j);
+      const edge = smooth(clamp(Math.min(f, 1 - f) / fade, 0, 1)), bulge = 0.5 - 0.5 * Math.cos(q * TAU);
+      for (let i = 0; i <= rows; i++) {
+        const v = i / rows, n = flip ? N[j][i].clone().negate() : N[j][i];
+        const body = smooth(clamp(v / 0.15, 0, 1)) * (1 - smooth(clamp((v - 0.35) / 0.65, 0, 1)));
+        const th = thick * edge * body * (0.5 + 0.5 * bulge);
+        const p = C[j][i].clone().addScaledVector(n, ripple * A.rip * edge * bulge * smooth(clamp(v / 0.3, 0, 1)) * (1 - v * 0.5) + sgn * th);
+        pos.push(p.x, p.y, p.z);
+        uvs.push(f * repeat, 1 - v);
+        c.lerpColors(A.tint[0], B.tint[0], smooth(q));
+        c1.lerpColors(A.tint[1], B.tint[1], smooth(q));
+        c.lerp(c1, smooth(v)).multiplyScalar(0.78 + 0.22 * bulge);
+        col.push(c.r, c.g, c.b);
+        sus.push(su(f, v));
+      }
+    }
+  }
+  for (let s = 0; s < 2; s++) {
+    for (let j = 0; j < cols; j++) {
+      for (let i = 0; i < rows; i++) {
+        const a = s * (cols + 1) * R + j * R + i, b = a + R;
+        if ((s === 0) !== flip) idx.push(a, b, a + 1, b, b + 1, a + 1); // across x down: faces the normal
+        else idx.push(a, a + 1, b, b, a + 1, b + 1);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('su', new THREE.Float32BufferAttribute(sus, 1));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;
 }
 
-/** A hair card hanging from its top edge (y = 0) down -y, curling toward +z, with a gentle wave. */
-function hairCard(width, length, { curl = 0.25, wave = 0.006, seed = 1 } = {}) {
-  const r = rng(seed);
-  const g = new THREE.PlaneGeometry(width, length, 4, 7);
-  g.translate(0, -length / 2, 0);
-  const p = g.attributes.position;
-  const ph = r() * TAU;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i);
-    const v = -y / length;
-    p.setXYZ(i, x + Math.sin(v * 5 + ph) * wave * v, y, curl * length * v * v + Math.sin(x * 60 + ph) * 0.002 * v);
-  }
-  g.computeVertexNormals();
-  return g;
-}
+/** Width along a lock (f = 0 root .. 1 tip, by length): fullest just below the root, then tapering to a fine point. */
+const taper = (f) => (f < 0.1 ? 0.55 + f * 4.5 : 1 - smooth(clamp((f - 0.42) / 0.58, 0, 1)) * 0.95);
 
-/** A tapered limb segment hanging from the origin down to y = -len. */
-function limb(len, r0, r1) {
-  const g = new THREE.CylinderGeometry(r0, r1, len, 12, 1);
-  g.translate(0, -len / 2, 0);
+/** A lock of long hair through pts: a flat, tapering ribbon whose width spans `across`, shaded root to tip. */
+function lock(pts, width, thick, across, c0, c1, su, q) {
+  const d = [0];
+  for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + pts[i].distanceTo(pts[i - 1]));
+  const g = loft(pts.map((p, i) => ({ p: p.toArray(), w: width * taper(d[i] / d[d.length - 1]), t: thick * taper(d[i] / d[d.length - 1]) })), {
+    radial: q.radial, rings: q.rings, side: across, caps: [true, false], capRings: 2, uv: [2, 1],
+    tint: (c, { u }) => c.lerpColors(c0, c1, smooth(u)),
+  });
+  g.attributes.su.array.fill(su);
   return g;
 }
 
@@ -257,19 +505,67 @@ function route(from, to) {
   return path;
 }
 
+/* ---------------- anatomy ---------------- */
+
+/** The spine, from the tip of the tail along the back and up the neck to just under the skull. */
+const SPINE = [
+  { p: [0, 0.262, -0.468], w: 0.006 },                                // tail tip
+  { p: [0, 0.236, -0.43], w: 0.0095 },
+  { p: [0, 0.214, -0.385], w: 0.0125 },
+  { p: [0, 0.203, -0.338], w: 0.0155, b: 0.017 },
+  { p: [0, 0.2, -0.302], w: 0.02, t: 0.02, b: 0.024 },                // set of the tail
+  { p: [0, 0.188, -0.272], w: 0.046, t: 0.034, b: 0.062 },            // seat
+  { p: [0, 0.18, -0.232], w: 0.06, t: 0.048, b: 0.074 },              // croup
+  { p: [0, 0.174, -0.17], w: 0.06, t: 0.056, b: 0.068, sq: 2.2 },     // loin
+  { p: [0, 0.172, -0.095], w: 0.056, t: 0.058, b: 0.058, k: 0.1, sq: 2.2 }, // tuck-up
+  { p: [0, 0.168, -0.02], w: 0.062, t: 0.062, b: 0.08, k: 0.35, sq: 2.2 },  // back of the ribs
+  { p: [0, 0.164, 0.06], w: 0.064, t: 0.065, b: 0.098, k: 0.5, sq: 2.2 },   // deep chest
+  { p: [0, 0.168, 0.125], w: 0.061, t: 0.063, b: 0.1, k: 0.5 },       // brisket, behind the front legs
+  { p: [0, 0.188, 0.178], w: 0.053, t: 0.054, b: 0.088, k: 0.35 },    // withers and prosternum
+  { p: [0, 0.226, 0.214], w: 0.044, t: 0.042, b: 0.06 },              // base of the neck
+  { p: [0, 0.264, 0.236], w: 0.035, t: 0.034, b: 0.043 },
+  { p: [0, 0.296, 0.248], w: 0.029, t: 0.03, b: 0.034 },              // under the skull
+];
+
+/** Spine bones (by z along the spine), tail tip first. `mid` is the root of both chains. */
+const BONES = [['tail3', -0.43], ['tail2', -0.386], ['tail1', -0.34], ['tail0', -0.3], ['rump', -0.232], ['loin', -0.15],
+  ['mid', -0.06], ['ribs', 0.03], ['chest', 0.12], ['neck0', 0.207], ['neck1', 0.248]];
+
+/** Head, from the occiput to the nose; the neck pivot (the origin) sits inside the back of the skull. */
+const SKULL = [
+  { p: [0, 0.02, -0.024], w: 0.026, t: 0.026, b: 0.027 },   // occiput
+  { p: [0, 0.021, 0.0], w: 0.037, t: 0.036, b: 0.035 },     // domed cranium
+  { p: [0, 0.019, 0.03], w: 0.035, t: 0.033, b: 0.034 },    // cheekbones; the eyes sit just ahead
+  { p: [0, 0.012, 0.056], w: 0.026, t: 0.023, b: 0.029 },   // stop
+  { p: [0, 0.006, 0.081], w: 0.0205, t: 0.0195, b: 0.023 }, // long muzzle
+  { p: [0, 0.002, 0.105], w: 0.0175, t: 0.0175, b: 0.018 },
+  { p: [0, -0.001, 0.126], w: 0.0145, t: 0.015, b: 0.014 }, // under the nose leather
+];
+const JAW = [
+  { p: [0, -0.009, 0.02], w: 0.02, t: 0.009, b: 0.01 },
+  { p: [0, -0.0105, 0.065], w: 0.0155, t: 0.008, b: 0.0095 },
+  { p: [0, -0.0095, 0.095], w: 0.012, t: 0.007, b: 0.008 },
+  { p: [0, -0.007, 0.115], w: 0.009, t: 0.006, b: 0.0055 },
+];
+
 /* ================================================================== */
 
 export function buildDog(ctx, { scale = 1.12 } = {}) {
   const { scene } = ctx;
   const r = rng(21);
-  const coat = std({ map: coatTex(), roughness: 0.78 });
-  const tan = std({ color: TAN, roughness: 0.8 });
-  const nose = std({ color: '#141010', roughness: 0.2 });
-  const eye = std({ color: '#0a0604', roughness: 0.05, metalness: 0.1 });
-  const glint = new THREE.MeshBasicMaterial({ color: '#ffffff' });
-  const hair = std({ map: strandTex([COAT, '#3a1f12', '#43251a', '#5a321d'], 5), roughness: 0.55, alphaTest: 0.38, side: THREE.DoubleSide });
-  const warmHair = std({ map: strandTex([COAT2, '#5e331c', '#4e2c1a', '#7a4626'], 9), roughness: 0.55, alphaTest: 0.38, side: THREE.DoubleSide });
   const lowQ = ctx.quality.name === 'low';
+
+  // fur: physically based for its sheen, a soft warm glow at grazing angles like a silky coat
+  const fur = (params) => retro(new THREE.MeshPhysicalMaterial({ sheen: 1, sheenRoughness: 0.4, sheenColor: new THREE.Color('#6b4630'), ...params }));
+  const coat = fur({ map: coatTex(), vertexColors: true, roughness: 0.8, sheen: 0.7 });
+  const hair = fur({ map: strandTex(), vertexColors: true, roughness: 0.6 });
+  const nose = retro(new THREE.MeshPhysicalMaterial({ map: noseTex(), roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.35 }));
+  const eye = retro(new THREE.MeshPhysicalMaterial({ color: '#1c0d06', roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.04 }));
+  const glint = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  const lidMat = std({ color: '#2a160c', roughness: 0.55 });
+  const nail = std({ color: '#1b120d', roughness: 0.35 });
+  const cCoat = new THREE.Color(COAT), cCoat2 = new THREE.Color(COAT2), cDark = new THREE.Color(DARK), cTip = new THREE.Color(TIP), cTan = new THREE.Color(TAN);
+  const Q = lowQ ? { radial: 4, rings: 6 } : { radial: 4, rings: 10 }; // locks: diamond-section ribbons
 
   /* ---------------- the bed ---------------- */
   const bedPos = NODES[BED];
@@ -290,146 +586,248 @@ export function buildDog(ctx, { scale = 1.12 } = {}) {
   const body = new THREE.Group(); // bob, roll, lying down
   dog.add(body);
 
-  // torso and neck: one loft from the rump, through the deep chest, up into the head
-  const torso = loft([
-    { p: [0, 0.172, -0.29], w: 0.004, h: 0.004 },
-    { p: [0, 0.174, -0.272], w: 0.042, h: 0.046 },
-    { p: [0, 0.172, -0.24], w: 0.063, h: 0.066 },
-    { p: [0, 0.17, -0.17], w: 0.069, h: 0.069, drop: 0.1 },
-    { p: [0, 0.168, -0.09], w: 0.064, h: 0.06 },
-    { p: [0, 0.163, 0.0], w: 0.069, h: 0.07, drop: 0.25 },
-    { p: [0, 0.158, 0.09], w: 0.075, h: 0.082, drop: 0.45 },
-    { p: [0, 0.168, 0.155], w: 0.07, h: 0.077, drop: 0.35 },
-    { p: [0, 0.205, 0.2], w: 0.052, h: 0.058 },
-    { p: [0, 0.252, 0.222], w: 0.047, h: 0.05 },
-    { p: [0, 0.292, 0.232], w: 0.043, h: 0.044 },
-  ], { uv: [2, 5] });
-  put(body, torso, coat, [0, 0, 0]);
-  put(body, new THREE.SphereGeometry(0.036, 18, 12), std({ color: '#6e4226', roughness: 0.85 }), [0, 0.118, 0.19], { s: [0.95, 0.9, 0.5] }); // forechest
+  // body, neck and tail: one skin, darker along the back, warmer underneath, tan on the forechest and under the tail
+  const torso = loft(SPINE, {
+    radial: lowQ ? 18 : 24, rings: lowQ ? 48 : 72, uv: [3, 7],
+    tint: (c, { a, p }) => {
+      const s = Math.sin(a);
+      c.copy(cCoat).lerp(cDark, smooth(clamp((s - 0.3) / 0.6, 0, 1)) * 0.6).lerp(cCoat2, smooth(clamp((-s - 0.2) / 0.6, 0, 1)) * 0.6);
+      const chest = smooth(clamp((p.z - 0.15) / 0.04, 0, 1)) * smooth(clamp((-s - 0.1) / 0.4, 0, 1)) * (1 - smooth(clamp((p.y - 0.15) / 0.05, 0, 1)));
+      const tail = smooth(clamp((-0.285 - p.z) / 0.03, 0, 1)) * smooth(clamp((-s - 0.3) / 0.5, 0, 1));
+      c.lerp(cTan, Math.max(chest * 0.85, tail * 0.7));
+    },
+  });
+  const sp = torso.userData;
 
-  // legs: two segments each so the trot can lift and fold the paws
-  const legs = [];
-  const makeLeg = (x, y, z, upper, lower, front, side) => {
-    const hip = new THREE.Group();
-    hip.position.set(x, y, z);
-    body.add(hip);
-    if (front) put(hip, limb(upper, 0.024, 0.02), coat, [0, 0, 0]);
-    else {
-      put(hip, new THREE.SphereGeometry(0.042, 16, 12), coat, [-side * 0.012, 0.004, 0.004], { s: [0.48, 0.9, 1.0] }); // thigh, blended into the body
-      put(hip, limb(upper, 0.027, 0.019), coat, [0, 0, 0]);
+  // spine bones: one chain runs forward from the middle of the back to the head, the other back to the tip of the tail
+  const bone = {}, bones = [], boneU = [];
+  for (const [name, z] of BONES) {
+    const b = new THREE.Bone();
+    b.name = name;
+    b.rotation.order = 'YXZ';
+    const u = name === 'neck1' ? 1 : sp.uz(z);
+    b.userData.home = sp.frame(u).c;
+    bone[name] = b;
+    bones.push(b);
+    boneU.push(u);
+  }
+  body.add(bone.mid);
+  bone.mid.position.copy(bone.mid.userData.home);
+  for (const chain of [['mid', 'ribs', 'chest', 'neck0', 'neck1'], ['mid', 'loin', 'rump', 'tail0', 'tail1', 'tail2', 'tail3']]) {
+    for (let i = 1; i < chain.length; i++) {
+      const b = bone[chain[i]], parent = bone[chain[i - 1]];
+      parent.add(b);
+      b.position.copy(b.userData.home).sub(parent.userData.home);
     }
-    const knee = new THREE.Group();
-    knee.position.set(0, -upper, front ? 0.004 : -0.012);
-    hip.add(knee);
-    put(knee, new THREE.SphereGeometry(0.0185, 14, 10), coat, [0, 0, 0]);
-    put(knee, limb(lower, 0.0175, 0.014), coat, [0, 0, 0]);
-    const paw = put(knee, new THREE.SphereGeometry(0.018, 14, 10), tan, [side * 0.003, -lower + 0.003, 0.008], { s: [1, 0.55, 1.2] });
-    paw.rotation.y = front ? side * 0.22 : side * 0.08;
-    // trot: diagonal pairs move together
-    legs.push({ hip, knee, front, phase: front ? (side > 0 ? 0 : Math.PI) : (side > 0 ? Math.PI : 0) });
-    return hip;
+  }
+  const tailBones = ['tail0', 'tail1', 'tail2', 'tail3'].map((k) => bone[k]);
+  const skeleton = new THREE.Skeleton(bones);
+  const skinned = (geo, mat) => {
+    const m = new THREE.SkinnedMesh(skin(geo, boneU), mat);
+    m.frustumCulled = false; // he changes shape when he curls up; he's small, so just always draw him
+    body.add(m);
+    return m;
   };
-  const fl = makeLeg(-0.046, 0.128, 0.142, 0.06, 0.06, true, -1);
-  const fr = makeLeg(0.046, 0.128, 0.142, 0.06, 0.06, true, 1);
-  const hl = makeLeg(-0.048, 0.142, -0.19, 0.072, 0.059, false, -1);
-  const hr = makeLeg(0.048, 0.142, -0.19, 0.072, 0.059, false, 1);
+  const skins = [skinned(torso, coat)];
+  // a joint on a bone, placed by its rest position in the body
+  const attach = (b, x, y, z) => {
+    const g = new THREE.Group();
+    g.position.set(x, y, z).sub(b.userData.home);
+    b.add(g);
+    return g;
+  };
 
-  // long hair: flank skirts, chest frill, front-leg feathering, breeches. Cards hang down and curl outward.
-  const card = (parent, mat, w, len, pos, rot, opts) => put(parent, hairCard(w, len, { ...opts, seed: r.int(1, 999) }), mat, pos, { r: rot, order: 'YXZ', cast: !lowQ });
+  /* long hair: curtains draped over the solid body and cut into pointed locks at the hem, plus a few loose locks */
+  const furGeos = [];
+  const hairColours = () => [new THREE.Color().lerpColors(cDark, cCoat, r.range(0.1, 0.9)), new THREE.Color().lerpColors(cCoat2, cTip, r.range(0.1, 1))];
+  const addLock = (list, pts, w, across, su) => list.push(lock(pts, w, w * 0.22, across, ...hairColours(), su, Q));
+  const hang = (path, opts) => curtain(path, { r, colours: hairColours, cols: lowQ ? 16 : 28, rows: lowQ ? 8 : 12, ...opts });
+  const side = (s, a) => (s > 0 ? a : Math.PI - a); // mirror an angle round the body onto the right-hand side
+  // the coat parts along the spine and drapes both flanks from just under the collar to the rump, then falls
+  // free in a fringe that is longest under the chest, where it nearly sweeps the floor, and shorter on the neck
+  const floorAt = (z) => (z < 0.02 ? lerp(0.112, 0.036, smooth(clamp((z + 0.22) / 0.2, 0, 1))) : lerp(0.036, 0.085, smooth(clamp((z - 0.11) / 0.11, 0, 1))));
+  const uCoat = [sp.uz(-0.29), 0.93];
+  const uf = (f) => lerp(uCoat[0], uCoat[1], f);
   for (const s of [-1, 1]) {
-    const N = 15;
-    for (let i = 0; i < N; i++) {
-      const t = (i + r.range(0.1, 0.9)) / N;
-      const z = -0.22 + t * 0.4;
-      const deep = 0.45 + 0.55 * Math.sin(Math.pow(t, 0.8) * Math.PI); // longest under the chest
-      const len = (0.075 + deep * 0.05) * r.range(0.8, 1.12);
-      card(body, r.chance(0.5) ? warmHair : hair, r.range(0.045, 0.065), len, [s * 0.044, r.range(0.19, 0.215), z], [r.range(-0.05, 0.12), (s * Math.PI) / 2 + r.range(-0.3, 0.3), r.range(-0.12, 0.12)], { curl: r.range(0.3, 0.55), wave: 0.01 });
-      if (i % 2 === 0) card(body, r.chance(0.5) ? hair : warmHair, r.range(0.04, 0.055), len * 0.8, [s * 0.052, r.range(0.165, 0.185), z + 0.01], [0.1, (s * Math.PI) / 2 + r.range(-0.35, 0.35), 0], { curl: 0.6, wave: 0.01 });
-    }
-    card(s < 0 ? fl : fr, warmHair, 0.035, 0.07, [0, -0.01, -0.018], [0.1, Math.PI, 0], { curl: 0.5 });
-    card(s < 0 ? hl : hr, warmHair, 0.06, 0.06, [0, -0.02, -0.045], [0.2, Math.PI, 0], { curl: 0.5 });
+    furGeos.push(hang((f, hem) => {
+      const u = uf(f), a1 = -0.36;
+      const path = [0, 1, 2, 3, 4, 5, 6].map((i) => [u, side(s, lerp(1.49, a1, i / 6))]);
+      const leave = sp.at(u, side(s, a1)).p;
+      const len = Math.min(leave.y - floorAt(leave.z), lerp(0.13, 0.06, smooth(clamp((u - 0.82) / 0.08, 0, 1))));
+      return drape(sp, path, 0.0062, Math.max(0.008, len * hem), Z, r, { flare: 0.32, wave: 0 });
+    }, {
+      cols: lowQ ? 26 : 50, rows: lowQ ? 9 : 13, lock: 3, jag: 0.45, su: uf, out: new THREE.Vector3(s, 0, 0),
+      waveDir: Z, wave: 0.004, repeat: 14, fade: 0.06, thick: 0.0034, ripple: 0.0034,
+    }));
   }
-  for (let i = 0; i < 3; i++) card(body, warmHair, 0.06, 0.085, [(i - 1) * 0.026, 0.135, 0.205], [-0.15, 0.25 * (i - 1), 0], { curl: 0.3 });
+  // belly fringe between the two curtains, seen from low down
+  for (let i = 0, M = lowQ ? 3 : 6; i < M; i++) {
+    const z = lerp(-0.13, 0.08, (i + r.range(0.2, 0.8)) / M), u = sp.uz(z);
+    const { p, n, tan } = sp.at(u, -Math.PI / 2 + r.range(-0.35, 0.35));
+    addLock(furGeos, fall(p, n, r.range(0.026, 0.036), tan, r, { flare: 0.1, lie: 0.05 }), r.range(0.014, 0.017), tan, u);
+  }
+  // a bib from the base of the neck down over the forechest, hanging between the front legs
+  const uThroat = 0.92, uBrisket = sp.uz(0.155);
+  furGeos.push(hang((f, hem) => {
+    const da = lerp(-1.5, 1.5, f);
+    const path = [0, 0.25, 0.5, 0.75, 1].map((t) => [lerp(uThroat, uBrisket, t), -Math.PI / 2 + da * lerp(1, 0.8, t)]);
+    const leave = sp.at(uBrisket, -Math.PI / 2 + da * 0.8).p.y;
+    return drape(sp, path, 0.005, Math.max(0.01, (leave - 0.042) * hem), X, r, { flare: 0.2, wave: 0 });
+  }, { cols: lowQ ? 12 : 20, su: (f, v) => lerp(uThroat, uBrisket, Math.min(1, v * 1.6)), out: new THREE.Vector3(0, -0.4, 1), waveDir: X, wave: 0.003, repeat: 5 }));
+  // the flag under the tail, longest halfway along
+  const uTail = [sp.uz(-0.458), sp.uz(-0.305)];
+  furGeos.push(hang((f, hem) => {
+    const { p, n } = sp.at(lerp(uTail[0], uTail[1], f), -Math.PI / 2);
+    return fall(p, n, (0.035 + Math.sin(Math.pow(f, 0.75) * Math.PI) * 0.06) * hem, Z, r, { flare: 0.12, lie: 0.1, wave: 0 });
+  }, { cols: lowQ ? 10 : 18, lock: 3, su: (f) => lerp(uTail[0], uTail[1], f), waveDir: Z, wave: 0.004, repeat: 5, thick: 0.0045, fade: 0.15 }));
+  skins.push(skinned(merge(furGeos), hair));
 
-  // tail: a tapering tube that carries on from the topline, with a long plume underneath
-  const tailRoot = new THREE.Group();
-  tailRoot.position.set(0, 0.2, -0.275);
-  body.add(tailRoot);
-  const tailCurve = new THREE.CatmullRomCurve3([[0, 0, 0], [0, 0.018, -0.07], [0, 0.05, -0.14], [0, 0.1, -0.19]].map((p) => new THREE.Vector3(...p)));
-  const tailGeo = new THREE.TubeGeometry(tailCurve, 20, 0.016, 10, false);
-  const tp = tailGeo.attributes.position, along = new THREE.Vector3();
-  for (let i = 0; i < tp.count; i++) {
-    const seg = Math.floor(i / 11) / 20; // rings of 11 verts (10 radial segments + seam)
-    tailCurve.getPointAt(Math.min(1, seg), along);
-    const k = 1 - seg * 0.6;
-    tp.setXYZ(i, along.x + (tp.getX(i) - along.x) * k, along.y + (tp.getY(i) - along.y) * k, along.z + (tp.getZ(i) - along.z) * k);
-  }
-  tailGeo.computeVertexNormals();
-  put(tailRoot, tailGeo, coat, [0, 0, 0]);
-  for (let i = 0; i < 8; i++) {
-    const t = 0.08 + i * 0.12;
-    const p = tailCurve.getPointAt(t);
-    const tg = tailCurve.getTangentAt(t);
-    const pitch = Math.atan2(tg.y, -tg.z);
-    for (const s of [-1, 1]) {
-      const m = card(tailRoot, i % 2 ? warmHair : hair, 0.045, 0.055 + Math.sin(t * Math.PI) * 0.035, [p.x + s * 0.004, p.y, p.z], [0, 0, 0], { curl: 0.5, wave: 0.01 });
-      m.rotation.set(-pitch * 0.4, (s * Math.PI) / 2 + s * 0.35, 0, 'YXZ');
-    }
-  }
-
-  // collar with a brass tag
-  const collar = std({ color: '#8c1c13', roughness: 0.45 });
+  // collar with a brass tag, high on the neck above the long hair
+  const nf = sp.frame(0.952);
+  const collarMat = std({ color: '#5e1810', roughness: 0.55 });
   const brass = std({ color: '#c9a24a', roughness: 0.25, metalness: 0.9 });
-  put(body, new THREE.TorusGeometry(0.049, 0.005, 8, 32), collar, [0, 0.228, 0.21], { r: [-1.13, 0, 0], s: [1, 1, 1.6] });
-  put(body, new THREE.CylinderGeometry(0.01, 0.01, 0.003, 18), brass, [0, 0.2, 0.256], { r: [Math.PI / 2 - 0.42, 0, 0] });
+  const collar = attach(bone.neck0, ...nf.c.clone().addScaledVector(nf.up, (nf.t - nf.b) / 2).toArray());
+  collar.quaternion.setFromUnitVectors(Z, nf.tan); // the ring lies across the neck; local -y points down the throat
+  const nh = (nf.t + nf.b) / 2;
+  put(collar, new THREE.TorusGeometry(1, 0.06, 8, 36), collarMat, [0, 0, 0], { s: [(nf.w + 0.0025) / 0.94, (nh + 0.0025) / 0.94, 0.085] });
+  put(collar, new THREE.CylinderGeometry(0.0095, 0.0095, 0.0025, 18), brass, [0, -(nh + 0.011), 0.006], { r: [Math.PI / 2 + 0.25, 0, 0] });
 
-  // head: one long tapered wedge with a glossy nose, almond eyes set on the sides and tan brows
-  const neckTop = new THREE.Group();
-  neckTop.position.set(0, 0.292, 0.232);
-  body.add(neckTop);
+  /* ---------------- legs ---------------- */
+  // shoulder/hip, elbow/stifle and wrist/hock joints, so the trot can swing, fold and flick each paw
+  const legs = [];
+  const legTint = (c, y) => c.lerpColors(cCoat, cTan, smooth(clamp((0.085 - y) / 0.05, 0, 1)) * 0.9);
+  const segment = (parent, pts, radii, y0) => put(parent, loft(pts.map((p, i) => ({ p, w: radii[i][0], t: radii[i][1], b: radii[i][2] ?? radii[i][1] })), {
+    radial: lowQ ? 8 : 10, rings: lowQ ? 4 : 6, capRings: 3, uv: [1, 2], tint: (c, { p }) => legTint(c, p.y + y0),
+  }), coat);
+  const nailGeo = new THREE.ConeGeometry(0.0018, 0.0058, 6);
+  const foot = (parent, s, front, floor) => {
+    const k = front ? 1 : 0.9;
+    const f = new THREE.Group(); // on the floor under the ball of the foot, toes turned out a little
+    f.position.set(0, floor, 0.01 * k);
+    f.rotation.y = s * (front ? 0.24 : 0.08);
+    parent.add(f);
+    const tint = (c) => c.copy(cTan).lerp(cCoat2, 0.25);
+    put(f, paint(new THREE.SphereGeometry(0.0155 * k, 12, 8), tint), coat, [0, 0.0085 * k, -0.003], { s: [1, 0.62, 1.15] });
+    for (let i = 0; i < 4; i++) {
+      const x = (i - 1.5) * 0.0074 * k, z = (0.0118 - Math.abs(i - 1.5) * 0.0032) * k;
+      put(f, paint(new THREE.SphereGeometry(0.0059 * k, 8, 6), tint), coat, [x, 0.0059 * k, z], { s: [1, 1, 1.12] });
+      put(f, nailGeo, nail, [x * 1.04, 0.0036 * k, z + 0.0056 * k], { r: [Math.PI / 2 + 0.4, 0, 0] });
+    }
+  };
+  const makeLeg = (front, s) => {
+    const J = front
+      ? { at: [0.04, 0.152, 0.128], knee: [0.0, -0.068, -0.014], paw: [-0.007, -0.05, 0.012], bone: bone.chest }
+      : { at: [0.04, 0.162, -0.212], knee: [0.012, -0.06, 0.03], paw: [-0.004, -0.058, -0.044], bone: bone.rump };
+    const hip = attach(J.bone, s * J.at[0], J.at[1], J.at[2]);
+    const [kx, ky, kz] = [s * J.knee[0], J.knee[1], J.knee[2]];
+    const [px, py, pz] = [s * J.paw[0], J.paw[1], J.paw[2]];
+    const knee = new THREE.Group();
+    knee.position.set(kx, ky, kz);
+    hip.add(knee);
+    const paw = new THREE.Group();
+    paw.position.set(px, py, pz);
+    knee.add(paw);
+    const yKnee = J.at[1] + ky, yPaw = yKnee + py;
+    const feather = [];
+    if (front) {
+      // shoulder and upper arm, tucked in against the chest; the forearm curves in around the keel
+      segment(hip, [[0, 0.03, 0.01], [s * 0.002, 0, 0], [kx * 0.6, ky * 0.6, kz * 0.6], [kx, ky, kz]], [[0.018, 0.026], [0.02, 0.025], [0.018, 0.02], [0.016, 0.017]], J.at[1]);
+      segment(knee, [[0, 0.008, 0], [px * 0.5, py * 0.5, pz * 0.5], [px, py, pz]], [[0.016, 0.017], [0.0135, 0.014], [0.012, 0.012]], yKnee);
+      // feathering down the back of the forearm
+      feather.push(hang((f, hem) => fall(new THREE.Vector3(s * 0.003 + lerp(-0.011, 0.011, f), -0.002, -0.011), new THREE.Vector3(s * 0.2, 0, -1).normalize(), 0.044 * hem, X, r, { flare: 0.45, lie: 0.15, wave: 0 }),
+        { cols: lowQ ? 4 : 6, rows: lowQ ? 5 : 7, lock: 2, jag: 0.35, thick: 0.0035, ripple: 0.0015, fade: 0.2, repeat: 2 }));
+      put(knee, merge(feather), hair);
+    } else {
+      // a broad, muscular thigh blended into the rump, then the second thigh back down to the hock
+      segment(hip, [[0, 0.03, -0.008], [0, 0, 0], [kx * 0.55, ky * 0.55, kz * 0.55], [kx, ky, kz]], [[0.017, 0.024, 0.028], [0.022, 0.028, 0.034], [0.02, 0.022, 0.024], [0.015, 0.016, 0.016]], J.at[1]);
+      segment(knee, [[0, 0.006, 0], [px * 0.5, py * 0.5, pz * 0.5], [px, py, pz]], [[0.0135, 0.016], [0.011, 0.012], [0.0105, 0.0105]], yKnee);
+      // breeches: long hair down the back of the thighs
+      feather.push(hang((f, hem) => fall(new THREE.Vector3(s * lerp(-0.006, 0.026, f), 0.012, -0.036), new THREE.Vector3(s * 0.5, 0, -1).normalize(), 0.075 * hem, X, r, { flare: 0.4, lie: 0.25, wave: 0 }),
+        { cols: lowQ ? 5 : 8, rows: lowQ ? 6 : 8, lock: 2, jag: 0.35, thick: 0.004, ripple: 0.0018, fade: 0.2, repeat: 2, waveDir: X, wave: 0.003 }));
+      put(hip, merge(feather), hair);
+    }
+    // pastern (or hock) and foot
+    const floor = -yPaw;
+    segment(paw, [[0, 0.006, 0], [0, floor * 0.5, 0.004], [0, floor + 0.01, 0.008]], [[0.011, 0.011], [0.0105, 0.0102], [0.0118, 0.011]], yPaw);
+    foot(paw, s, front, floor);
+    // trot: diagonal pairs move together. fold: the joint angles lying down: forearms along the bed, hind legs folded flat
+    legs.push({ hip, knee, paw, front, side: s, phase: front ? (s > 0 ? 0 : Math.PI) : (s > 0 ? Math.PI : 0), fold: front ? [0.1, -1.5, 1.4] : [-1.0, 2.4, -1.7] });
+  };
+  makeLeg(true, -1);
+  makeLeg(true, 1);
+  makeLeg(false, -1);
+  makeLeg(false, 1);
+
+  /* ---------------- head ---------------- */
+  // domed skull, a gentle stop, a long tapering muzzle over a separate lower jaw; tan brows, cheeks and muzzle
   const head = new THREE.Group();
-  neckTop.add(head);
-  const headMat = std({ map: headTex(), roughness: 0.75 });
   head.rotation.order = 'YXZ';
-  const skull = loft([
-    { p: [0, 0.016, -0.034], w: 0.004, h: 0.004 },
-    { p: [0, 0.018, -0.02], w: 0.032, h: 0.032 },
-    { p: [0, 0.021, 0.008], w: 0.044, h: 0.041 },
-    { p: [0, 0.019, 0.038], w: 0.04, h: 0.035, drop: 0.08 },
-    { p: [0, 0.012, 0.064], w: 0.031, h: 0.026, drop: 0.05 },
-    { p: [0, 0.004, 0.098], w: 0.024, h: 0.02 },
-    { p: [0, -0.002, 0.128], w: 0.018, h: 0.016 },
-    { p: [0, -0.005, 0.152], w: 0.013, h: 0.013 },
-    { p: [0, -0.005, 0.164], w: 0.004, h: 0.004 },
-  ], { radial: 24, rings: 40, uv: [1, 1] });
-  put(head, skull, headMat, [0, 0, 0]);
-  put(head, new THREE.SphereGeometry(0.0115, 16, 12), nose, [0, -0.002, 0.157], { s: [1.15, 0.85, 0.85] });
-  const eyes = [];
+  bone.neck1.add(head);
+  const skull = loft(SKULL, {
+    radial: lowQ ? 18 : 26, rings: lowQ ? 20 : 30, uv: [2, 2],
+    tint: (c, { a, p }) => {
+      const s = Math.sin(a);
+      c.copy(cCoat).lerp(cDark, smooth(clamp((p.y - 0.03) / 0.025, 0, 1)) * 0.45);
+      let tan = smooth(clamp((p.z - 0.05) / 0.035, 0, 1)) * smooth(clamp((0.35 - s) / 0.5, 0, 1)); // muzzle
+      for (const sx of [-1, 1]) {
+        const brow = Math.hypot(p.x - sx * 0.019, p.y - 0.039, (p.z - 0.042) * 0.8);
+        const cheek = Math.hypot(p.x - sx * 0.028, p.y - 0.002, p.z - 0.04);
+        tan = Math.max(tan, 1 - smooth(clamp((brow - 0.004) / 0.006, 0, 1)), (1 - smooth(clamp((cheek - 0.006) / 0.01, 0, 1))) * 0.8);
+      }
+      c.lerp(cTan, tan * 0.85);
+    },
+  });
+  const sk = skull.userData;
+  put(head, skull, coat);
+  // lower jaw: tan, with dark lips where it tucks under the muzzle
+  put(head, loft(JAW, {
+    radial: lowQ ? 10 : 14, rings: lowQ ? 8 : 10,
+    tint: (c, { a }) => c.copy(cTan).lerp(cCoat, 0.45).lerp(cDark, smooth(clamp((Math.sin(a) - 0.35) / 0.3, 0, 1)) * 0.8),
+  }), coat);
+  put(head, new THREE.SphereGeometry(0.0112, 18, 12), nose, [0, 0.0035, 0.1305], { s: [1.15, 0.86, 0.92] });
+
+  // eyes: dark and glossy with a catchlight, almond shaped under dark lids that blink and droop when he's sleepy
+  const lids = [];
   for (const s of [-1, 1]) {
-    const e = put(head, new THREE.SphereGeometry(0.0078, 14, 10), eye, [s * 0.029, 0.022, 0.058], { s: [0.8, 0.75, 1] });
-    e.rotation.y = s * 0.5;
-    put(e, new THREE.SphereGeometry(0.0021, 6, 4), glint, [s * 0.002, 0.003, 0.007], { cast: false });
-    eyes.push(e);
-    put(head, new THREE.SphereGeometry(0.0065, 10, 6), tan, [s * 0.026, 0.035, 0.056], { s: [1.2, 0.5, 0.9] }); // brow
+    const { p, n } = sk.at(sk.uz(0.047), s > 0 ? 0.5 : Math.PI - 0.5);
+    const g = new THREE.Group();
+    g.position.copy(p).addScaledVector(n, -0.0046);
+    g.quaternion.setFromUnitVectors(Z, n.clone().multiplyScalar(0.55).add(new THREE.Vector3(0, 0.06, 0.8)).normalize());
+    g.scale.set(1, 0.8, 0.9);
+    head.add(g);
+    put(g, new THREE.SphereGeometry(0.0094, 14, 10), eye, [0, 0, 0]);
+    put(g, new THREE.SphereGeometry(0.0019, 8, 6), glint, [-s * 0.0018, 0.0039, 0.0079], { cast: false, receive: false });
+    const upper = new THREE.Group();
+    g.add(upper);
+    put(upper, new THREE.SphereGeometry(0.0107, 14, 5, 0, TAU, 0, Math.PI / 2), lidMat, [0, 0, 0]);
+    put(g, new THREE.SphereGeometry(0.0104, 14, 4, 0, TAU, Math.PI / 2, Math.PI / 2), lidMat, [0, 0, 0], { r: [0.62, 0, 0] });
+    lids.push(upper);
   }
-  // ears: set high and back; leather plus layers of long silky hair reaching well past the jaw
+
+  // ears: set high and back, a long soft leather hanging against the cheek under a curtain of silky hair
+  // that reaches well below the jaw
   const ears = [];
   for (const s of [-1, 1]) {
     const pivot = new THREE.Group();
-    pivot.position.set(s * 0.038, 0.04, 0.0);
+    pivot.position.copy(sk.at(sk.uz(0.004), side(s, 0.62)).p).add(new THREE.Vector3(-s * 0.003, -0.002, 0));
     head.add(pivot);
     const flap = new THREE.Group();
-    flap.rotation.z = s * 0.1;
     pivot.add(flap);
-    put(flap, new THREE.SphereGeometry(0.034, 14, 10), coat, [s * 0.008, -0.04, 0.0], { s: [0.26, 1.35, 0.95] });
-    for (let i = 0; i < 5; i++) {
-      card(flap, i % 2 ? hair : warmHair, r.range(0.05, 0.07), r.range(0.15, 0.18), [s * (0.008 + i * 0.002), 0.02 - i * 0.004, -0.018 + i * 0.009], [r.range(-0.12, 0.12), (s * Math.PI) / 2 + r.range(-0.25, 0.25), r.range(-0.08, 0.08)], { curl: r.range(0.18, 0.35), wave: 0.012 });
-    }
+    const leather = loft([[0.002, -0.002, 0.003], [0.016, -0.022, 0.002], [0.024, -0.05, -0.002], [0.025, -0.078, -0.004], [0.022, -0.094, -0.003]].map(([x, y, z], i) => ({
+      p: [s * x, y, z], w: [0.012, 0.022, 0.027, 0.025, 0.015][i], t: 0.0042,
+    })), { radial: 10, rings: 10, side: Z, tint: (c) => c.copy(cCoat).lerp(cDark, 0.35) });
+    put(flap, leather, coat);
+    const lu = leather.userData, out = s > 0 ? -Math.PI / 2 : Math.PI / 2; // angle of the leather's outer face
+    const earHair = [[out, 1.45, s, 1], [-out, 1.2, -s, 0.75]].map(([face, spread, ox, k]) => hang((f, hem) => {
+      const a = face + lerp(-spread, spread, f);
+      return drape(lu, [0.06, 0.25, 0.5, 0.75, 0.94].map((u) => [u, a]), 0.0045, 0.045 * k * hem, Z, r, { flare: 0.12, wave: 0 });
+    }, { cols: lowQ ? 6 : 12, rows: lowQ ? 8 : 12, lock: 3, out: new THREE.Vector3(ox, 0, 0), repeat: 3, thick: 0.004, ripple: 0.003, waveDir: Z, wave: 0.003 }));
+    put(flap, merge(earHair), hair);
     ears.push(flap);
   }
 
   dog.traverse((o) => {
-    if (o.isMesh) {
+    if (o.isMesh && o.material !== glint) {
       o.castShadow = !lowQ;
       o.receiveShadow = true;
     }
@@ -441,6 +839,10 @@ export function buildDog(ctx, { scale = 1.12 } = {}) {
   blob.rotation.x = -Math.PI / 2;
   blob.renderOrder = 1;
   scene.add(blob);
+
+  // bind the skins in the rest pose
+  dog.updateMatrixWorld(true);
+  for (const m of skins) m.bind(skeleton);
 
   /* ---------------- hearts when petted ---------------- */
   const heartMat = new THREE.SpriteMaterial({ map: heartTex(), transparent: true, depthWrite: false });
@@ -522,8 +924,8 @@ export function buildDog(ctx, { scale = 1.12 } = {}) {
     }
     st.speed = lerp(st.speed, 0, 1 - Math.exp(-dt * 6));
     if (st.mode === 'settle') {
-      // turn to face out of the bed toward the room, then curl up
-      const want = 0.55;
+      // turn round (as dogs do) so that, once curled up nose to tail, he faces out of the bed toward the room
+      const want = 0.55 + Math.PI;
       st.heading += clamp(Math.atan2(Math.sin(want - st.heading), Math.cos(want - st.heading)), -2 * dt, 2 * dt);
       st.pos.lerp(bedV, 1 - Math.exp(-dt * 3));
       if (st.timer < 0) {
@@ -539,7 +941,8 @@ export function buildDog(ctx, { scale = 1.12 } = {}) {
     }
   }
 
-  let hopY = 0;
+  let hopY = 0, prevHeading = st.heading, bend = 0, lastYaw = 0;
+  const earSt = ears.map(() => ({ x: 0, z: 0, vx: 0, vz: 0 }));
   /** gaze: { yaw, pitch } toward the viewer in the dog's own frame. */
   function update(dt, t, gaze) {
     st.clock += dt;
@@ -552,6 +955,7 @@ export function buildDog(ctx, { scale = 1.12 } = {}) {
     st.lie = lerp(st.lie, st.mode === 'lie' ? 1 : 0, 1 - Math.exp(-dt * (st.mode === 'lie' ? 2.2 : 4)));
     const L = st.lie;
     st.sleep = lerp(st.sleep, st.mode === 'lie' && st.timer < 18 ? 1 : 0, 1 - Math.exp(-dt * 1.5));
+    const S = st.sleep * L; // properly asleep only once he's down
 
     dog.position.set(st.pos.x, 0, st.pos.y);
     dog.rotation.y = st.heading;
@@ -559,33 +963,60 @@ export function buildDog(ctx, { scale = 1.12 } = {}) {
     blob.rotation.y = st.heading;
     blob.material.opacity = 1 - L * 0.4;
 
-    // legs: a trot while walking, folded when lying
+    // legs: a trot while walking (paws stay flat on the ground, then flick up as they swing through), folded when lying
     for (const leg of legs) {
       const ph = st.phase + leg.phase;
       const swing = Math.sin(ph) * 0.42 * k;
       const lift = Math.max(0, Math.cos(ph)) * k;
-      leg.hip.rotation.x = lerp(-swing, leg.front ? -1.35 : -1.15, L);
-      leg.knee.rotation.x = lerp(leg.front ? lift * 0.9 : -lift * 0.7, leg.front ? 0.1 : 1.75, L);
+      const hip = -swing, knee = leg.front ? -lift * 0.3 : lift * 0.5;
+      const paw = -(hip + knee) + (leg.front ? lift * 1.5 : -lift * 0.9);
+      leg.hip.rotation.x = lerp(hip, leg.fold[0], L);
+      leg.hip.rotation.z = leg.front ? 0 : -leg.side * 0.3 * L; // hind legs fold in under him
+      leg.knee.rotation.x = lerp(knee, leg.fold[1], L);
+      leg.paw.rotation.x = lerp(paw, leg.fold[2], L);
     }
     hopY = st.hop > 0 ? Math.abs(Math.sin((1 - st.hop) * Math.PI * 2)) * 0.03 * st.hop : 0;
     st.hop = Math.max(0, st.hop - dt * 2.2);
-    body.position.y = Math.abs(Math.sin(st.phase)) * 0.006 * k - L * 0.038 + hopY;
+    body.position.y = Math.abs(Math.sin(st.phase)) * 0.006 * k - L * 0.024 + hopY;
+    body.position.x = -S * 0.065; // curled up (both ends come round to his left), he shifts over to stay in the middle of the bed
     body.rotation.z = Math.sin(st.phase) * 0.025 * k;
-    body.scale.y = 1 + Math.sin(t * (st.mode === 'lie' ? 1.4 : 2.4 + ex * 4)) * (0.012 + ex * 0.008);
 
-    // tail: wags while walking or happy, curls around when lying
+    // spine: bends into turns, wiggles from the hips when he's happy, curls up nose-to-tail asleep
+    const dh = Math.atan2(Math.sin(st.heading - prevHeading), Math.cos(st.heading - prevHeading));
+    prevHeading = st.heading;
+    bend = lerp(bend, clamp((dh / Math.max(dt, 1e-3)) * 0.1, -0.2, 0.2) * (1 - L), 1 - Math.exp(-dt * 6));
+    const curl = L * 0.12 + S * 0.46;
     const wagSpeed = 3 + ex * 11 + k * 3;
-    tailRoot.rotation.y = lerp(Math.sin(t * wagSpeed) * (0.2 + ex * 0.55 + k * 0.15), 0.9, L);
-    tailRoot.rotation.x = lerp(-0.12 - ex * 0.25 - k * 0.1, 0.75, L);
+    const wag = Math.sin(t * wagSpeed);
+    const fore = bend * 0.5 + curl, aft = -bend * 0.4 - curl;
+    bone.ribs.rotation.y = fore * 0.8;
+    bone.chest.rotation.y = fore;
+    bone.loin.rotation.y = aft * 0.8 - wag * 0.05 * ex;
+    bone.rump.rotation.y = aft - wag * 0.09 * ex;
+    // breathing: the ribcage swells; the chest bone undoes it so the head and front legs stay put
+    const br = Math.sin(t * (st.mode === 'lie' ? 1.4 : 2.4 + ex * 4)) * (0.014 + ex * 0.01);
+    bone.ribs.scale.set(1 + br * 0.7, 1 + br, 1);
+    bone.chest.scale.set(1 / (1 + br * 0.7), 1 / (1 + br), 1);
+
+    // tail: a wave runs down it as it wags; carried higher when happy, wrapped round him in bed
+    const amp = (0.16 + ex * 0.4 + k * 0.1) * (1 - L * 0.8);
+    const lift = lerp(0.08 + ex * 0.3 + k * 0.08, -0.3, L);
+    tailBones.forEach((b, i) => {
+      b.rotation.y = Math.sin(t * wagSpeed - i * 0.7) * amp * (0.6 + i * 0.25) - curl * 1.3;
+      b.rotation.x = i ? lift * 0.25 : lift;
+    });
 
     // head: looks at you when standing, forward when trotting, nose down when sniffing, resting when lying
     const lookYaw = walking ? Math.sin(t * 0.7) * 0.15 : gaze.yaw;
     const lookPitch = walking ? 0.12 : st.sniff > 0 ? 0.7 + Math.sin(t * 9) * 0.05 : gaze.pitch;
     st.gazeYaw = lerp(st.gazeYaw, lerp(lookYaw, 0.25, L), 1 - Math.exp(-dt * 4));
     st.gazePitch = lerp(st.gazePitch, lerp(lookPitch, 0.18, L), 1 - Math.exp(-dt * 4));
-    neckTop.position.y = 0.292 - L * 0.06;
-    neckTop.position.z = 0.232 + L * 0.03;
-    head.rotation.set(0.14 + st.gazePitch + Math.sin(st.phase * 2) * 0.03 * k, st.gazeYaw, Math.sin(t * 6) * 0.14 * ex + 0.04, 'YXZ');
+    const gy = st.gazeYaw, gp = st.gazePitch;
+    const nod = Math.sin(st.phase * 2) * 0.03 * k;
+    // the neck takes part of every turn of the head; asleep, it lays his chin down along his flank
+    bone.neck0.rotation.set(gp * 0.3 + S * 0.5, gy * 0.25 + curl * 1.1, 0);
+    bone.neck1.rotation.set(gp * 0.2 + S * 0.35, gy * 0.25 + curl * 1.1, 0);
+    head.rotation.set(0.08 + gp * 0.5 + nod - S * 0.75, gy * 0.5 + curl * 1.3, Math.sin(t * 6) * 0.14 * ex + 0.04 * (1 - S) + S * 0.3, 'YXZ');
 
     // blinking, and sleepy eyes on the bed
     st.nextBlink -= dt;
@@ -594,14 +1025,24 @@ export function buildDog(ctx, { scale = 1.12 } = {}) {
       st.nextBlink = 2.5 + Math.random() * 4;
     }
     st.blink = Math.max(0, st.blink - dt);
-    const open = st.blink > 0 ? 0.12 : lerp(0.78, 0.1, st.sleep);
-    eyes.forEach((e) => (e.scale.y = open));
+    const open = st.blink > 0 ? 0 : 1 - st.sleep;
+    lids.forEach((l) => (l.rotation.x = lerp(1.35, -0.6, open)));
 
-    // ears swing with the trot and lift when excited
+    // ears: hang under gravity whatever the head does, bounce with the trot, lift when he's excited, swing after quick turns
+    const yawAll = bone.neck0.rotation.y + bone.neck1.rotation.y + head.rotation.y;
+    const yawVel = clamp((yawAll - lastYaw) / Math.max(dt, 1e-3), -6, 6);
+    lastYaw = yawAll;
+    const pitchAll = bone.neck0.rotation.x + bone.neck1.rotation.x + head.rotation.x;
+    const step = Math.min(dt, 0.05);
     ears.forEach((e, i) => {
-      const s = i === 0 ? -1 : 1;
-      e.rotation.z = s * (0.1 + ex * 0.28 + Math.abs(Math.sin(st.phase)) * 0.06 * k);
-      e.rotation.x = -ex * 0.18 + Math.sin(st.phase * 2 + 1) * 0.08 * k;
+      const s = i ? 1 : -1, es = earSt[i];
+      const tz = s * (0.04 + ex * 0.3 + Math.abs(Math.sin(st.phase)) * 0.1 * k + S * 0.3) - head.rotation.z;
+      const tx = -pitchAll * 0.85 - ex * 0.12 + Math.sin(st.phase * 2 + 1) * 0.08 * k;
+      es.vz += ((tz - es.z) * 90 - es.vz * 8 - yawVel * 6) * step;
+      es.vx += ((tx - es.x) * 90 - es.vx * 8) * step;
+      es.z += es.vz * step;
+      es.x += es.vx * step;
+      e.rotation.set(es.x, 0, es.z);
     });
 
     hearts.forEach((h) => {

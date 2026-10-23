@@ -1,11 +1,12 @@
 import * as THREE from '../vendor/three.module.min.js';
+import { Jukebox } from './music.js';
 
 const PANEL_FOR = (target) => {
   if (!target) return null;
   if (target === 'terminal') return 'terminal';
   if (target.startsWith('report:')) return 'paper';
   if (target === 'library' || target.startsWith('book:')) return 'library';
-  if (target === 'podcasts' || target.startsWith('tape:')) return 'podcasts';
+  if (target === 'podcasts' || target.startsWith('tape:') || target.startsWith('song:')) return 'podcasts';
   if (target === 'contact' || target === 'about') return target;
   return null;
 };
@@ -36,6 +37,8 @@ export class UI {
       markers: this.$('#markers'),
       announcer: this.$('#announcer'),
       paper: this.$('#paper'),
+      jukebox: this.$('#jukebox'),
+      walkHint: this.$('#walk-hint'),
       panels: {
         terminal: this.$('#research'),
         library: this.$('#library'),
@@ -45,6 +48,7 @@ export class UI {
         paper: this.$('#paper'),
       },
     };
+    this.jukebox = new Jukebox(this.$('#jukebox-player'), { onEnd: () => this.o.ejectSong() });
     this.bind();
     this.prepTerminal();
   }
@@ -66,21 +70,43 @@ export class UI {
     const hookList = (panel, prefix) => {
       panel.querySelectorAll('.item[data-id]').forEach((li) => {
         const id = li.dataset.id;
+        const kind = li.classList.contains('song') ? 'song' : prefix;
         li.tabIndex = -1;
-        const enter = () => this.o.previewItem && this.o.previewItem(prefix, id, true);
-        const leave = () => this.o.previewItem && this.o.previewItem(prefix, id, false);
+        const enter = () => this.o.previewItem && this.o.previewItem(kind, id, true);
+        const leave = () => this.o.previewItem && this.o.previewItem(kind, id, false);
         li.addEventListener('mouseenter', enter);
         li.addEventListener('mouseleave', leave);
         li.addEventListener('focusin', enter);
         li.addEventListener('focusout', leave);
         li.addEventListener('click', (e) => {
           if (e.target.closest('a')) return;
-          this.o.navigate(`${prefix}:${id}`);
+          this.o.navigate(`${kind}:${id}`);
         });
       });
     };
     hookList(this.el.panels.library, 'book');
     hookList(this.el.panels.podcasts, 'tape');
+    this.el.jukebox.querySelector('.jukebox-eject').addEventListener('click', () => this.o.ejectSong());
+  }
+
+  /* ---------------- the tape deck's "now playing" card ---------------- */
+
+  playSong(song) {
+    const j = this.el.jukebox;
+    j.querySelector('.jukebox-title').textContent = song.title;
+    j.querySelector('.jukebox-by').textContent = song.by;
+    j.classList.remove('is-error');
+    j.hidden = false;
+    document.querySelectorAll('.song.is-playing').forEach((li) => li.classList.remove('is-playing'));
+    document.querySelectorAll(`.song[data-id="${CSS.escape(song.id)}"]`).forEach((li) => li.classList.add('is-playing'));
+    this.jukebox.play(song).catch(() => j.classList.add('is-error'));
+    this.announce(`Now playing ${song.title} by ${song.by}`);
+  }
+
+  stopSong() {
+    this.jukebox.stop();
+    this.el.jukebox.hidden = true;
+    document.querySelectorAll('.song.is-playing').forEach((li) => li.classList.remove('is-playing'));
   }
 
   prepTerminal() {
@@ -160,7 +186,7 @@ export class UI {
       `Shelving the library ............... ${n(content.library.length, 2)} VOLUMES`,
       `Rewinding cassettes ................ ${n(content.podcasts.length, 2)} TAPES`,
       'Walking the dog .................... OK',
-      'Dusting the blinds ................. OK',
+      'Polishing the window ............... OK',
       '',
       'C:\\> OFFICE.EXE',
     ];
@@ -223,8 +249,8 @@ export class UI {
     if (!h) return null;
     if (h === 'research') return 'terminal';
     const [k, id] = h.split('/');
-    if (['report', 'book', 'tape'].includes(k) && id) return `${k}:${id}`;
-    if (['library', 'podcasts', 'contact', 'about', 'desk', 'window'].includes(k)) return k;
+    if (['report', 'book', 'tape', 'song'].includes(k) && id) return `${k}:${id}`;
+    if (['library', 'podcasts', 'contact', 'about', 'desk', 'window', 'diploma', 'outside'].includes(k)) return k;
     return null;
   }
 
@@ -247,6 +273,7 @@ export class UI {
   openPanel(name, { focus = null } = {}) {
     const el = this.el.panels[name];
     if (!el) return;
+    this.o.releasePointer(); // a panel needs the cursor
     const active = document.activeElement;
     const insidePanel = active && Object.values(this.el.panels).some((p) => p.contains(active));
     if (!insidePanel) this.returnFocus = active;
@@ -379,7 +406,7 @@ export class UI {
   }
 
   hoverItem(h) {
-    const id = h && (h.book ? h.book.item.id : h.tape ? h.tape.item.id : null);
+    const id = h && (h.book ? h.book.item.id : h.tape ? h.tape.item.id : h.mixtape ? h.mixtape.item.id : null);
     document.querySelectorAll('.item.is-hot').forEach((li) => li.classList.remove('is-hot'));
     if (id) document.querySelectorAll(`.item[data-id="${CSS.escape(id)}"]`).forEach((li) => li.classList.add('is-hot'));
   }
@@ -434,6 +461,18 @@ export class UI {
 
   setActiveNav(view) {
     document.querySelectorAll('[data-go]').forEach((b) => b.setAttribute('aria-current', String(b.dataset.go === view)));
+  }
+
+  /** Once a visit, when the door's been opened for you: how to walk out of it. */
+  walkHint() {
+    const el = this.el.walkHint;
+    if (!el || this.walkHinted) return;
+    this.walkHinted = true;
+    el.textContent = this.touch ? 'Tap the snow to walk out · drag to look round' : 'W A S D to walk out · Shift to run · or click the ground';
+    el.hidden = false;
+    clearTimeout(this.walkHintTimer);
+    this.walkHintTimer = setTimeout(() => (el.hidden = true), 6000);
+    this.announce('The door is open. Walk out with W, A, S and D.');
   }
 
   announce(text) {
